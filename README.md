@@ -3,7 +3,7 @@ Trying to implement (at least 10% hopefully, I just want the car to drive like 1
 
 Development will be divided in the following steps:
 
-l. Provide data generation tools:
+1. Provide data generation tools:
   - [ ] Add [Carla](https://github.com/carla-simulator/carla) as depenency. This will provide accurate rendered data.
   - [ ] Provide preprocessing scripts for data and transform them into the required format for the network.
   ![](assets/carla-sim.gif)
