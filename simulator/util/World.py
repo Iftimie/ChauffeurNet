@@ -1,4 +1,5 @@
 from .Actor import Actor
+from .Camera import Camera
 import _pickle as cPickle
 import os
 import random
@@ -34,6 +35,16 @@ class World(Actor):
         cPickle.dump(self, fileObject, 2)
         fileObject.close()
         print ("world saved")
+
+    def get_camera_from_actors(self):
+        camera = None
+        for actor in self.actors:
+            if type(actor) is Camera:
+                camera = actor
+        if camera is None:
+            camera = Camera()
+            self.actors.append(camera)
+        return camera
 
     def load_world(self):
         fileObject = open(self.save_path, 'rb')

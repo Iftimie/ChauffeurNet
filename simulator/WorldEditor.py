@@ -3,6 +3,7 @@ import numpy as np
 import os
 from util.World import World
 from util.LaneMarking import LaneMarking
+from util.CurvedLaneMarking import CurvedLaneMarking
 from util.TrafficLight import TrafficLight
 from util.Camera import Camera
 
@@ -19,7 +20,9 @@ WASD moves the selected actor
 QE rotates the selected actor
 Number keys: 1 LaneMarking
              2 TrafficLight
+             3 CurvedLaneMarking
 ~ Delete selected actor
+C select camera immediately
 """
 
 
@@ -32,11 +35,12 @@ class WorldEditor:
         self.world = World()
         if os.path.exists(self.world.save_path):
             self.world = self.world.load_world()
+            self.camera = self.world.get_camera_from_actors()
         else:
+            self.camera = Camera()
             self.world.actors.append(LaneMarking())
             self.world.actors.append(self.camera)
 
-        self.camera = Camera()
         self.delta = 10
         self.selected_index = -1
         self.selected_actor = None
@@ -81,13 +85,21 @@ class WorldEditor:
             self.world.save_world(overwrite=True)
         if key == 96:
             self.delete_selected_actor()
-
+        if key == 99:
+            self.select_camera_immediately()
 
         # if key == 112:
         #     self.camera.toggle_projection()
 
-    def delete_selected_actor(self):
+    def select_camera_immediately(self):
         if self.selected_actor != None:
+            self.selected_actor.set_inactive()
+        self.selected_actor = self.camera
+        self.selected_actor.set_active()
+        #keep the current index. do not change it
+
+    def delete_selected_actor(self):
+        if self.selected_actor != None and type(self.selected_actor) is not Camera:
             self.world.actors.remove(self.selected_actor)
             self.selected_index = 0
 
@@ -102,13 +114,13 @@ class WorldEditor:
             new_actor = LaneMarking()
         if key == 50:
             new_actor = TrafficLight()
+        if key ==51:
+            new_actor = CurvedLaneMarking(arc_degree = 60, radius =300)
 
         new_actor.set_transform(x = x, y = 0, z = z)
         self.world.actors.append(new_actor)
         self.selected_actor = new_actor
         self.selected_actor.set_active()
-
-
 
 
     def move_actor(self, key):

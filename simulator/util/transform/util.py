@@ -3,22 +3,29 @@ from math import sin, cos, radians, degrees, pi, asin, atan2
 
 
 def rot_y(deg=0):
-    return np.array([[cos(deg), 0, sin(deg)],
+    r = np.array([[cos(deg), 0, sin(deg)],
                      [0, 1, 0],
                      [-sin(deg), 0, cos(deg)]])
+    R = np.eye(4)
+    R[:3,:3] = r
+    return R
 
 
 def rot_z(deg=0):
-    return np.array([[cos(deg), -sin(deg), 0],
+    r = np.array([[cos(deg), -sin(deg), 0],
                      [sin(deg), cos(deg), 0],
                      [0, 0, 1]])
-
+    R = np.eye(4)
+    R[:3, :3] = r
+    return R
 
 def rot_x(deg=0):
-    return np.array([[1, 0, 0],
+    r= np.array([[1, 0, 0],
                      [0, cos(deg), -sin(deg)],
                      [0, sin(deg), cos(deg)]])
-
+    R = np.eye(4)
+    R[:3,:3] = r
+    return R
 
 def rotation_matrix(roll=0, yaw=0, pitch=0):
     """
@@ -33,8 +40,7 @@ def rotation_matrix(roll=0, yaw=0, pitch=0):
     roll = radians(roll)
     yaw = radians(yaw)
     pitch = radians(pitch)
-    R = np.eye(4)
-    R[:3, :3] = rot_y(yaw).dot(rot_x(pitch)).dot(rot_z(roll))
+    R= rot_y(yaw).dot(rot_x(pitch)).dot(rot_z(roll))
     return R
 
 
