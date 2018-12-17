@@ -60,5 +60,5 @@ actors = []
 actors.append(LaneMarking())
 world = World(actors=actors)
 camera = Camera(cam_config)
-camera.set_transform(x = 0, y = 0, z = 0, roll = 0, yaw = 0, pitch = 0)
+camera.set_transform(x = 0, y = -1000, z = 0, roll = 0, yaw = 0, pitch =-90)
 plot_world(world.actors[0].vertices_W, camera.K, camera.T[:3,:3], camera.T[:3,3])

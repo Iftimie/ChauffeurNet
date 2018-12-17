@@ -2,6 +2,10 @@
 class Actor:
 
     def __init__(self):
+        """
+        self.c is colour
+        """
+        self.c = (255,)
         pass
 
     def render(self, image, C):
@@ -22,5 +26,12 @@ class Actor:
         :param roll:  angle in degrees around Z axis
         :param yaw:   angle in degrees around Y axis
         :param pitch: angle in degrees around X axis
+        """
+        pass
+
+    def get_transform(self):
+        """
+        return the transformation parameters as x, y, z, roll, yaw, pitch
+        :return:
         """
         pass

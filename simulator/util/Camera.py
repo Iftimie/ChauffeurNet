@@ -1,18 +1,22 @@
 from .Actor import Actor
-from .transform.util import transformation_matrix
+from .transform.util import transformation_matrix, params_from_tansformation
 import numpy as np
 
 class Camera(Actor):
-
-    def __init__(self, cam_config):
+    def __init__(self, cam_config = None):
         """
         :param cam_config: dictionary containing image width, image height, focal length in centimeters, pixel_width in centimeters
         :param x, y, z, roll, yaw, pitch in world coordinates
         T = transformation matrix in world coordinates R * t
         """
-        self.K = self.create_K(cam_config)
-        self.T = np.eye(4)
-        self.C = self.create_cammera_matrix(self.T, self.K)
+        if cam_config == None:
+            self.cam_config = {"img_w": 640, "img_h": 480, "f_cm": 0.238, "pixel_width_cm": 0.0003}
+        else:
+            self.cam_config = cam_config
+        self.K = self.create_K(self.cam_config)
+        self.set_transform(x=0, y=-1000, z=0, roll=0, yaw=0, pitch=-90)
+
+        self.project = self.project_perspective
 
     def create_cammera_matrix(self, T, K):
         """
@@ -49,3 +53,37 @@ class Camera(Actor):
         self.T = transformation_matrix(x, y, z, roll, yaw, pitch)
         self.C = self.create_cammera_matrix(self.T, self.K)
 
+    def get_transform(self):
+        return params_from_tansformation(self.T)
+
+    def project_ortographic(self, vertices):
+        homogeneous_vertices = self.C.dot(vertices)
+        homogeneous_vertices /= homogeneous_vertices[2, :]
+        homogeneous_vertices += self.center
+        v = homogeneous_vertices.astype(np.int32)
+        x = v[0, :]
+        y = v[1, :]
+        return x, y
+
+    def project_perspective(self, vertices):
+        #vertices have shape 4xN.
+        #C is 3x4 matrix
+        homogeneous_vertices = self.C.dot(vertices)
+        # divide u, v by z
+        projected_vertices = homogeneous_vertices / homogeneous_vertices[2, :]
+        v = projected_vertices.astype(np.int32)
+        x = v[0, :]
+        y = v[1, :]
+        return x, y
+
+    def toggle_projection(self):
+        if self.project == self.project_perspective:
+            self.K = np.eye(3)
+            self.center = np.array([[self.cam_config["img_w"] / 2],
+                                    [self.cam_config["img_h"] / 2],
+                                    [0.0]])
+            self.project = self.project_ortographic
+        else:
+            self.K = self.create_K(self.cam_config)
+            self.project = self.project_perspective
+        self.C = self.create_cammera_matrix(self.T, self.K)
