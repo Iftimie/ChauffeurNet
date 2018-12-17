@@ -8,6 +8,7 @@ class World(Actor):
     def __init__(self, actors = [],):
         super().__init__()
         self.actors = actors
+        self.save_path = "data/world.pkl"
         pass
 
     #@Override
@@ -17,23 +18,25 @@ class World(Actor):
             image = actor.render(image, C)
         return image
 
-    def save_world(self, save_path = "data/world.pkl"):
-        save_path
-        directory = os.path.dirname(save_path)
+    def save_world(self, overwrite = False):
+        for actor in self.actors:
+            actor.set_inactive()
+        directory = os.path.dirname(self.save_path)
         if not os.path.exists(directory):
             os.mkdir(directory)
-        if os.path.exists(save_path):
-            filename_ext = os.path.basename(save_path)
+        if os.path.exists(self.save_path) and not overwrite:
+            filename_ext = os.path.basename(self.save_path)
             filename, ext = os.path.splitext(filename_ext)
             UID = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
             filename = filename + UID +".pkl"
             save_path = os.path.join(directory, filename)
-        fileObject = open(save_path, 'wb')
+        fileObject = open(self.save_path, 'wb')
         cPickle.dump(self, fileObject, 2)
         fileObject.close()
+        print ("world saved")
 
-    def load_world(self, save_path = "data/world.pkl"):
-        fileObject = open(save_path, 'rb')
+    def load_world(self):
+        fileObject = open(self.save_path, 'rb')
         world_object = cPickle.load(fileObject)
         fileObject.close()
         return world_object

@@ -1,7 +1,8 @@
 from .Actor import Actor
+import cv2
 import numpy as np
 
-class LaneMarking(Actor):
+class TrafficLight(Actor):
 
     def __init__(self):
         """
@@ -11,9 +12,9 @@ class LaneMarking(Actor):
         vertices_W: point locations expressed in world coordinate system
         """
         super().__init__()
-        self.vertices_L = np.array([[-5, 0, -100, 1], #x, y, z   x increases to right, y up, z forward
-                                    [-5, 0,  100, 1],
-                                    [5, 0,  100, 1],
-                                    [5, 0,  -100, 1]]).T
+        self.vertices_L = np.array([[-20, 0, -20, 1], #x, y, z   x increases to right, y up, z forward
+                                    [-20, 0,  20, 1],
+                                    [20, 0,  20, 1],
+                                    [20, 0,  -20, 1]]).T
         self.vertices_W = self.T.dot(self.vertices_L)
 

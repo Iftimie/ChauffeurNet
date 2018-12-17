@@ -1,5 +1,4 @@
 from .Actor import Actor
-from .transform.util import transformation_matrix, params_from_tansformation
 import numpy as np
 
 class Camera(Actor):
@@ -9,6 +8,7 @@ class Camera(Actor):
         :param x, y, z, roll, yaw, pitch in world coordinates
         T = transformation matrix in world coordinates R * t
         """
+        super().__init__()
         if cam_config == None:
             self.cam_config = {"img_w": 640, "img_h": 480, "f_cm": 0.238, "pixel_width_cm": 0.0003}
         else:
@@ -47,14 +47,10 @@ class Camera(Actor):
 
         return K
 
-
     #@Override
     def set_transform(self, x = 0,y = 0,z = 0,roll = 0, yaw = 0, pitch = 0):
-        self.T = transformation_matrix(x, y, z, roll, yaw, pitch)
+        super(Camera, self).set_transform(x ,y ,z ,roll , yaw , pitch )
         self.C = self.create_cammera_matrix(self.T, self.K)
-
-    def get_transform(self):
-        return params_from_tansformation(self.T)
 
     def project_ortographic(self, vertices):
         homogeneous_vertices = self.C.dot(vertices)
@@ -87,3 +83,7 @@ class Camera(Actor):
             self.K = self.create_K(self.cam_config)
             self.project = self.project_perspective
         self.C = self.create_cammera_matrix(self.T, self.K)
+
+    #@Override
+    def set_active(self):
+        print ("Reached camera. No action for color")

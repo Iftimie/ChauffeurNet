@@ -63,8 +63,8 @@ def euler_angles(T):
     R = T[:3,:3]
     sx = -R[1][2]
     flt_eps = 0.00001
-    if abs((abs(sx) - 1.0) <flt_eps):
-        if abs(sx - 1.0)  <flt_eps:
+    if abs((abs(sx) - 1.0)) < flt_eps:
+        if abs(sx - 1.0)  < flt_eps:
             thetaX = pi * 0.5
             thetaZ = 0
             thetaY = asin(-R[2][0])
