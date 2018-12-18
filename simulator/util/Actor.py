@@ -82,6 +82,13 @@ class Actor:
         if key in [119, 100, 115, 97, 43, 45, 113, 101]:
             self.move_actor(key)
 
+    def interpret_mouse(self, mouse):
+        """
+        :param mouse: tuple of 2 coordinates, x and y on the screen
+        :return: nothing
+        """
+        pass
+
     def move_actor(self, key):
         x, y, z, roll, yaw, pitch = self.get_transform()
         if key == 119:

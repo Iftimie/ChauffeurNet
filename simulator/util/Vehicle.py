@@ -2,6 +2,8 @@ from .Actor import Actor
 import numpy as np
 from  math import *
 import cv2
+from scipy.interpolate import interp1d
+from .transform.util import rot_y
 
 class Vehicle(Actor):
 
@@ -29,6 +31,8 @@ class Vehicle(Actor):
         self.speed = 0        #d
         self.delta = 1        # unit of time here (unlike in World editor which is displacement. TODO change this
 
+        self.range_angle = (-0.785398, 0.785398)
+
     #@Override
     def interpret_key(self, key):
         if key == 119:
@@ -40,9 +44,16 @@ class Vehicle(Actor):
         if key == 97:
             self.turn_angle -= 0.0174533
 
-        self.turn_angle = max(-0.785398, min(self.turn_angle, 0.785398)) #45 degrees
-
+        self.turn_angle = max(self.range_angle[0], min(self.turn_angle, self.range_angle[1])) #45 degrees
         #TODO check what happens when speed is less than 0
+
+    #@Override
+    def interpret_mouse(self, mouse):
+        min_x = 150
+        max_x = 640-150
+        x_pos = max(min_x, min(mouse[0], max_x))  # 45 degrees
+        m_func = interp1d([min_x, max_x], [self.range_angle[0], self.range_angle[1]])
+        self.turn_angle = m_func(x_pos)
 
     #@Override
     def render(self, image, C):
@@ -96,4 +107,8 @@ class Vehicle(Actor):
         self.set_transform(x, y, z, roll, yaw, pitch)
 
         x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.camera.get_transform()
+        displacement_vector = np.array([[0,0,-200,1]]).T
+        displacement_vector = rot_y(yaw - pi).dot(displacement_vector)
+        x +=displacement_vector[0]
+        z +=displacement_vector[2]
         self.camera.set_transform(x, y_c, z, roll_c, yaw, pitch_c)
