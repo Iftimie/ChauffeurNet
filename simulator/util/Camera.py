@@ -87,3 +87,7 @@ class Camera(Actor):
     #@Override
     def set_active(self):
         print ("Reached camera. No action for color")
+
+    #@Override
+    def interpret_key(self, key):
+        super(Camera, self).interpret_key(key)

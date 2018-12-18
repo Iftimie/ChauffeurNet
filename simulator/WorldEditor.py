@@ -6,6 +6,7 @@ from util.LaneMarking import LaneMarking
 from util.CurvedLaneMarking import CurvedLaneMarking
 from util.TrafficLight import TrafficLight
 from util.Camera import Camera
+from util.Vehicle import Vehicle
 
 """
 Keys:
@@ -21,6 +22,7 @@ QE rotates the selected actor
 Number keys: 1 LaneMarking
              2 TrafficLight
              3 CurvedLaneMarking
+             4 Vehicle
 ~ Delete selected actor
 C select camera immediately
 """
@@ -41,7 +43,6 @@ class WorldEditor:
             self.world.actors.append(LaneMarking())
             self.world.actors.append(self.camera)
 
-        self.delta = 10
         self.selected_index = -1
         self.selected_actor = None
 
@@ -62,23 +63,12 @@ class WorldEditor:
             cv2.imshow("Editor", image)
             key = cv2.waitKey(33)
             self.interpret_key(key)
+            if self.selected_actor != None:
+                self.selected_actor.interpret_key(key)
 
     def interpret_key(self, key):
-        if key != -1:
-            print ("Pressed key ", key)
-        if key == 43:
-            self.zoom(delta = 100)
-        if key == 45:
-            self.zoom(delta= -100)
-        if key == 122:
-            self.delta +=10
-        if key == 120:
-            self.delta -=10
-            self.delta = self.delta if self.delta>10 else 10
         if key == 9  or key == 49:
             self.select_actor(key)
-        if key in [119, 100, 115, 97, 113, 101]:
-            self.move_actor(key)
         if key in [49, 50, 51, 52]:
             self.add_actor(key)
         if key == 13:
@@ -88,6 +78,7 @@ class WorldEditor:
         if key == 99:
             self.select_camera_immediately()
 
+        if key != -1: print ("Pressed key ", key)
         # if key == 112:
         #     self.camera.toggle_projection()
 
@@ -116,31 +107,13 @@ class WorldEditor:
             new_actor = TrafficLight()
         if key ==51:
             new_actor = CurvedLaneMarking(arc_degree = 60, radius =300)
+        if key == 52:
+            new_actor = Vehicle()
 
         new_actor.set_transform(x = x, y = 0, z = z)
         self.world.actors.append(new_actor)
         self.selected_actor = new_actor
         self.selected_actor.set_active()
-
-
-    def move_actor(self, key):
-        if self.selected_actor == None:return
-        x, y, z, roll, yaw, pitch = self.selected_actor.get_transform()
-        if key == 119:
-            z +=self.delta
-        if key == 100:
-            x +=self.delta
-        if key == 115:
-            z -=self.delta
-        if key == 97:
-            x -=self.delta
-        if key == 113:
-            yaw -=self.delta / 10
-        if key == 101:
-            yaw +=self.delta / 10
-
-        self.selected_actor.set_transform(x, y, z, roll, yaw, pitch)
-
 
     def select_actor(self, key):
         if self.selected_actor != None:
@@ -154,12 +127,6 @@ class WorldEditor:
             if self.selected_index < 0: self.selected_index = len(self.world.actors) -1
             self.selected_actor = self.world.actors[self.selected_index]
         self.selected_actor.set_active()
-
-    def zoom(self, delta):
-        x, y, z , roll, yaw, pitch = self.camera.get_transform()
-        y+=delta
-        self.camera.set_transform(x, y, z , roll, yaw, pitch)
-
 
 if __name__ =="__main__":
     worldEditor = WorldEditor()
