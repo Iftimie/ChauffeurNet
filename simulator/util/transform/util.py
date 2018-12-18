@@ -37,9 +37,6 @@ def rotation_matrix(roll=0, yaw=0, pitch=0):
     :param pitch: angle in degrees around X axis
     :return: 4x4 transformation matrix with rotation component. order is ZXY (roll, pitch, yaw).
     """
-    roll = radians(roll)
-    yaw = radians(yaw)
-    pitch = radians(pitch)
     R= rot_y(yaw).dot(rot_x(pitch)).dot(rot_z(roll))
     return R
 
@@ -82,9 +79,9 @@ def euler_angles(T):
         thetaX = asin(-R[1][2])
         thetaZ = atan2(R[1][0], R[1][1])
         thetaY = atan2(R[0][2], R[2][2])
-    roll = degrees(thetaZ)
-    yaw = degrees(thetaY)
-    pitch = degrees(thetaX)
+    roll = thetaZ
+    yaw = thetaY
+    pitch = thetaX
     return roll, yaw, pitch
 
 def translation(T):

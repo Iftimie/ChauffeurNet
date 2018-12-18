@@ -11,7 +11,7 @@ from util.Vehicle import Vehicle
 class Simulator:
 
     def __init__(self):
-        cv2.namedWindow("Editor")
+        cv2.namedWindow("Simulator")
         self.world = World()
         if os.path.exists(self.world.save_path):
             self.world = self.world.load_world()
@@ -28,7 +28,7 @@ class Simulator:
 
         while True:
             image = self.world.render(image=image, C=self.camera)
-            cv2.imshow("Editor", image)
+            cv2.imshow("Simulator", image)
             key = self.step()
 
             self.vehicle.interpret_key(key)

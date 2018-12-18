@@ -14,7 +14,7 @@ class Camera(Actor):
         else:
             self.cam_config = cam_config
         self.K = self.create_K(self.cam_config)
-        self.set_transform(x=0, y=-1000, z=0, roll=0, yaw=0, pitch=-90)
+        self.set_transform(x=0, y=-1000, z=0, roll=0, yaw=0, pitch=-1.5708)
 
         self.project = self.project_perspective
 

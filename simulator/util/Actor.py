@@ -1,6 +1,7 @@
 import numpy as np
 from .transform.util import transformation_matrix, params_from_tansformation
 import cv2
+from math import radians
 
 class Actor:
 
@@ -43,9 +44,9 @@ class Actor:
         X axis positive to the right, negative to the right
         Y axis positive up, negative down
         Z axis positive forward, negative backwards
-        :param roll:  angle in degrees around Z axis
-        :param yaw:   angle in degrees around Y axis
-        :param pitch: angle in degrees around X axis
+        :param roll:  angle in radians around Z axis
+        :param yaw:   angle in radians around Y axis
+        :param pitch: angle in radians around X axis
         """
         self.T = transformation_matrix(x, y, z, roll, yaw, pitch)
         self.vertices_W = self.T.dot(self.vertices_L)
@@ -96,7 +97,7 @@ class Actor:
         if key == 45:
             y -= Actor.delta
         if key == 113:
-            yaw -=Actor.delta / 10
+            yaw -= radians(Actor.delta / 10)
         if key == 101:
-            yaw +=Actor.delta / 10
+            yaw += radians(Actor.delta / 10)
         self.set_transform(x, y, z, roll, yaw, pitch)

@@ -17,14 +17,14 @@ class Vehicle(Actor):
                                     [-30, 0,  60, 1],
                                     [30, 0,  60, 1],
                                     [30, 0,  -60, 1]]).T
-        self.next_locations = np.zeros((4,60), np.float32)
+        self.next_locations = np.zeros((4,15), np.float32)
         self.next_locations[3,:] = 1
         self.vertices_W = self.T.dot(self.vertices_L)
         self.camera = camera
 
         #Kinematic model and variables as in:
         #https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/10-Unscented-Kalman-Filter.ipynb
-        self.turn_angle = 0        #alpha
+        self.turn_angle = 0        #alpha in radians
         self.wheel_base = 120 #W length of car
         self.speed = 0        #d
         self.delta = 1        # unit of time here (unlike in World editor which is displacement. TODO change this
@@ -36,11 +36,11 @@ class Vehicle(Actor):
         if key == 115:
             self.speed -= 1
         if key == 100:
-            self.turn_angle += 0.0174533
+            self.turn_angle += 0.0174533 #1 degrees
         if key == 97:
             self.turn_angle -= 0.0174533
 
-        self.turn_angle = max(-0.785398, min(self.turn_angle, 0.785398))
+        self.turn_angle = max(-0.785398, min(self.turn_angle, 0.785398)) #45 degrees
 
         #TODO check what happens when speed is less than 0
 
@@ -53,60 +53,43 @@ class Vehicle(Actor):
                 image = cv2.circle(image, (x[i], y[i]), 1, (0, 0, 255), -1)
         return image
 
-    # #@Override
-    # def set_transform(self, x=0, y=0, z=0, roll=0, yaw=0, pitch=0):
-    #     super(Vehicle, self).set_transform(x, y, z, roll, yaw, pitch)
-    #     self.vertices_W = self.T.dot(self.vertices_L)
-    #     return
+    def kinematic_model(self, z, x, yaw, delta):
+        distance = self.speed * delta
+        tan_steering = tan(self.turn_angle)
+        beta_radians = (distance / self.wheel_base) * tan_steering
+        r = self.wheel_base / tan_steering
+        sinh, sinhb = sin(yaw), sin(yaw + beta_radians)
+        cosh, coshb = cos(yaw), cos(yaw + beta_radians)
+        z += -r * sinh + r * sinhb
+        x += r * cosh - r * coshb
+        yaw += beta_radians
+        return z, x, yaw
+
+    def linear_model(self, z, x, yaw, delta):
+        distance = self.speed * delta
+        z += distance * cos(yaw)
+        x += distance * sin(yaw)
+        return z, x
 
     def simulate(self):
         x, y, z, roll, yaw, pitch = self.get_transform()
 
-        distance = self.speed * self.delta
+        if abs(self.turn_angle) > 0.0001: # is the car turning?
 
-        if abs(self.turn_angle) > 0.0001:
-            turn_angle_radians = self.turn_angle
-            yaw_radians = radians(yaw)
-            tan_steering = tan(turn_angle_radians)
-            beta_radians = (distance / self.wheel_base) * tan_steering
-            beta_degrees = degrees(beta_radians)
-            r = self.wheel_base / tan_steering
-            sinh, sinhb = sin(yaw_radians), sin(yaw_radians + beta_radians)
-            cosh, coshb = cos(yaw_radians), cos(yaw_radians + beta_radians)
+            z, x, yaw = self.kinematic_model(z,x, yaw, self.delta)
 
-            z += -r * sinh + r* sinhb
-            x += r * cosh - r* coshb
-            yaw += beta_degrees
-
-            tmp_z = z
-            tmp_x = x
-            tmp_yaw = yaw
-
-            ##################################################
-            # next location prediction
+            tmp_z,tmp_x, tmp_yaw = z, x, yaw
+            #next location prediction
             for i in range (self.next_locations.shape[1]):
-                turn_angle_radians = self.turn_angle
-                yaw_radians = radians(tmp_yaw)
-                tan_steering = tan(turn_angle_radians)
-                beta_radians = (distance / self.wheel_base) * tan_steering
-                beta_degrees = degrees(beta_radians)
-                r = self.wheel_base / tan_steering
-                sinh, sinhb = sin(yaw_radians), sin(yaw_radians + beta_radians)
-                cosh, coshb = cos(yaw_radians), cos(yaw_radians + beta_radians)
-                tmp_z += -r * sinh + r * sinhb
-                tmp_x += r * cosh - r * coshb
-                tmp_yaw += beta_degrees
+                tmp_z, tmp_x, tmp_yaw = self.kinematic_model(tmp_z, tmp_x, tmp_yaw, self.delta * 4)
                 self.next_locations[0, i] = tmp_x
                 self.next_locations[2, i] = tmp_z
-            #################################################
         else:
-            z += distance * cos(radians(yaw))
-            x += distance * sin(radians(yaw))
-            tmp_z = z
-            tmp_x = x
+            z, x = self.linear_model(z, x, yaw, self.delta)
+            tmp_z, tmp_x = z, x
+            #next location prediction
             for i in range(self.next_locations.shape[1]):
-                tmp_z += distance * cos(radians(yaw))
-                tmp_x += distance * sin(radians(yaw))
+                tmp_z, tmp_x = self.linear_model(tmp_z, tmp_x, yaw , self.delta * 4)
                 self.next_locations[0, i] = tmp_x
                 self.next_locations[2, i] = tmp_z
 

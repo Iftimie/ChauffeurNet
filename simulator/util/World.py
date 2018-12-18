@@ -30,7 +30,7 @@ class World(Actor):
             filename, ext = os.path.splitext(filename_ext)
             UID = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
             filename = filename + UID +".pkl"
-            save_path = os.path.join(directory, filename)
+            self.save_path = os.path.join(directory, filename)
         fileObject = open(self.save_path, 'wb')
         cPickle.dump(self, fileObject, 2)
         fileObject.close()
