@@ -20,6 +20,8 @@ class Actor:
         self.T = np.eye(4)
         self.vertices_L = np.array([[0, 0, 0, 1]]).T #vertices defined in local coordinate system
         self.vertices_W = self.T.dot(self.vertices_L)
+
+        self.DRAW_POLYGON = True
         pass
 
     def render(self, image, C):
@@ -30,11 +32,12 @@ class Actor:
         """
         if self.vertices_W.shape[1] > 1:
             x, y = C.project(self.vertices_W)
-            for i in range(1, len(x)):
-                prev = i-1
-                curr = i
-                image = cv2.line(image, pt1=(x[prev], y[prev]), pt2=(x[curr], y[curr]), color=self.c, thickness=1)
-            image = cv2.line(image, pt1=(x[curr], y[curr]), pt2=(x[0], y[0]), color=self.c, thickness=1)
+            pts = np.array([x, y]).T
+            pts = pts.reshape((-1, 1, 2))
+            if self.DRAW_POLYGON:
+                image = cv2.fillPoly(image, [pts], color=self.c)
+            else:
+                image = cv2.polylines(image, [pts], False, (0, 255, 0), 10)
         return image
 
     def set_transform(self, x=0, y=0, z=0, roll=0, yaw=0, pitch=0):
@@ -108,3 +111,16 @@ class Actor:
         if key == 101:
             yaw += radians(Actor.delta / 10)
         self.set_transform(x, y, z, roll, yaw, pitch)
+
+    def to_h5py(self):
+        vect_T = np.reshape(self.T, (-1))
+        vect_vertices_L = np.reshape(self.vertices_L, (-1))
+        return np.hstack((vect_T, vect_vertices_L))
+
+    def from_h5py(self, vect):
+        s_T_matrix = 16
+        self.T = np.reshape(vect[:s_T_matrix], (4,4))
+        s_points = self.vertices_L.shape[1] * 4 #for each point we have 4 coordinates
+        self.vertices_L = np.reshape(vect[s_T_matrix:s_T_matrix+s_points], (4, -1))
+        self.vertices_W = self.T.dot(self.vertices_L)
+

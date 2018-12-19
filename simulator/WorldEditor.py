@@ -16,7 +16,8 @@ P toggle orthographic/projective
 Z increase delta (which moves the object)
 X decrease delta (which moves the object)
 TAB select next actor
-SHIFT select previous actor
+ESC select previous actor
+ENTER saves world
 WASD moves the selected actor
 QE rotates the selected actor
 Number keys: 1 LaneMarking
@@ -63,11 +64,11 @@ class WorldEditor:
             cv2.imshow("Editor", image)
             key = cv2.waitKey(33)
             self.interpret_key(key)
-            if self.selected_actor != None:
+            if self.selected_actor is not None:
                 self.selected_actor.interpret_key(key)
 
     def interpret_key(self, key):
-        if key == 9  or key == 49:
+        if key == 9  or key == 27:
             self.select_actor(key)
         if key in [49, 50, 51, 52]:
             self.add_actor(key)
@@ -95,12 +96,6 @@ class WorldEditor:
             self.selected_index = 0
 
     def add_actor(self, key):
-        if self.selected_actor != None:
-            self.selected_actor.set_inactive()
-        self.selected_index = len(self.world.actors) # we do that because we are adding one more actor at the end
-
-        x, y, z, roll, yaw, pitch = self.camera.get_transform()
-        new_actor = None
         if key == 49:
             new_actor = LaneMarking()
         if key == 50:
@@ -110,7 +105,17 @@ class WorldEditor:
         if key == 52:
             new_actor = Vehicle()
 
-        new_actor.set_transform(x = x, y = 0, z = z)
+        if self.selected_actor is not None and type(self.selected_actor) is not Camera:
+            last_traform = self.selected_actor.get_transform()
+            last_traform = list(last_traform)
+            last_traform[1] = 0 # in case it is camera (which is up above)
+            new_actor.set_transform(*last_traform)
+            self.selected_actor.set_inactive()
+        else:
+            x, y, z, roll, yaw, pitch = self.camera.get_transform()
+            new_actor.set_transform(x=x, y=0, z=z)
+
+        self.selected_index = len(self.world.actors)  # we do that because we are adding one more actor at the end
         self.world.actors.append(new_actor)
         self.selected_actor = new_actor
         self.selected_actor.set_active()

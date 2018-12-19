@@ -64,6 +64,21 @@ class Vehicle(Actor):
                 image = cv2.circle(image, (x[i], y[i]), 1, (0, 0, 255), -1)
         return image
 
+    # @Override
+    def from_h5py(self, vect):
+        super(Vehicle, self).from_h5py(vect)
+        s_T_matrix = 16
+        s_points = self.vertices_L.shape[1] * 4
+        offset = s_T_matrix +s_points
+        self.turn_angle = vect[offset]  # alpha in radians
+        self.speed = vect[offset + 1]  # d
+
+    #Override
+    def to_h5py(self):
+        vect = super(Vehicle, self).to_h5py()
+        vect = np.hstack((vect, np.array([self.turn_angle, self.speed])))
+        return vect
+
     def kinematic_model(self, z, x, yaw, delta):
         distance = self.speed * delta
         tan_steering = tan(self.turn_angle)

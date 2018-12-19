@@ -1,15 +1,24 @@
 from .Actor import Actor
 from .Camera import Camera
-import _pickle as cPickle
+
+#import util.Actor #Keep in mind that this is how you can import this package, among the other ways above
+# print (sys.modules[__name__])
+# print (dir(sys.modules[__name__]))
+# print (sys.modules[__name__].__package__)
+import sys
 import os
 import random
 import string
+import h5py
+import numpy as np
+import importlib
+
 class World(Actor):
 
     def __init__(self, actors = [],):
         super().__init__()
         self.actors = actors
-        self.save_path = "data/world.pkl"
+        self.save_path = "data/world.h5"
         pass
 
     #@Override
@@ -29,11 +38,30 @@ class World(Actor):
             filename_ext = os.path.basename(self.save_path)
             filename, ext = os.path.splitext(filename_ext)
             UID = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-            filename = filename + UID +".pkl"
+            filename = filename + UID +".h5"
             self.save_path = os.path.join(directory, filename)
-        fileObject = open(self.save_path, 'wb')
-        cPickle.dump(self, fileObject, 2)
-        fileObject.close()
+
+        # The following spagetti code, takes the class names of all actors, counts the actors, and and creates a dataset for each type in h5py
+        dict_datasets = {} #{"name":[]}
+        for actor in self.actors:
+            if not actor.__class__.__name__ in dict_datasets.keys():
+                dict_datasets[actor.__class__.__name__] = []
+            actor_vect = actor.to_h5py()
+            dict_datasets[actor.__class__.__name__].append(actor_vect)
+        file = h5py.File(self.save_path, "w")
+        print (dict_datasets.keys())
+        print (len(dict_datasets["LaneMarking"]))
+        print (len(dict_datasets["Camera"]))
+        for class_name in dict_datasets.keys():
+
+            list_actors_for_class_name = dict_datasets[class_name]
+            all_actors = np.array(list_actors_for_class_name )
+            dset = file.create_dataset(class_name, all_actors.shape,dtype=np.float32 )
+            print(dset.shape)
+            print(all_actors.shape)
+
+            dset[...] = all_actors
+        file.close()
         print ("world saved")
 
     def get_camera_from_actors(self):
@@ -47,7 +75,16 @@ class World(Actor):
         return camera
 
     def load_world(self):
-        fileObject = open(self.save_path, 'rb')
-        world_object = cPickle.load(fileObject)
-        fileObject.close()
+        world_object = World()
+        file = h5py.File(self.save_path, "r")
+        for class_name in file.keys():
+            # module_imported =importlib.import_module("util")
+            module_imported =importlib.import_module(sys.modules[__name__].__package__)
+            class_ = getattr(module_imported, class_name)
+            for i in range(file[class_name].shape[0]):
+                instance = class_()
+                instance.from_h5py(file[class_name][i])
+                world_object.actors.append(instance)
+
         return world_object
+

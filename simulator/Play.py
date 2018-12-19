@@ -20,7 +20,6 @@ def mouse_listener(event, x, y, flags, param):
 
 class Simulator:
 
-
     mouse = (320, 240)
 
     def __init__(self):
