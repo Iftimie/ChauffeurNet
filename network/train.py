@@ -16,6 +16,17 @@ class DrivingDataset(Dataset):
         file = h5py.File(hdf5_file,"r")
         self.dset_data = file['data']
         self.dset_target = file['labels']
+        #self.weighting_histogram
+
+        range = (-0.785398, 0.785398)
+        bins = 45
+        # self.bins = np.arange(range[0], range[1], (range[1] - range[0]) / bins)
+        # self.bins = np.hstack((self.bins, np.array([range[1]])))
+        hist,bin_edges = np.histogram(self.dset_target[...],bins=bins, range=range, density=True)
+        hist = hist / np.sum(hist)
+        self.weighting_histogram = (1 / (hist+0.01)).astype(np.float32)
+        self.bin_edges = bin_edges
+
 
     def __len__(self):
         return self.dset_data.shape[0]
@@ -23,8 +34,14 @@ class DrivingDataset(Dataset):
     def __getitem__(self, idx):
         data = self.dset_data[idx,...].astype(np.float32)
         data /= 255.0
+        data -= 0.5
         target = self.dset_target[idx,...]
-        sample = {'data': data, 'target': target}
+        target_bin = np.digitize(target, self.bin_edges) - 1
+        if target_bin >= len(self.weighting_histogram) :target_bin = np.array([len(self.weighting_histogram) -1])
+        if target_bin <= 0 :target_bin = np.array([0])
+        #DONT FORGET TO ADD [] when indexing...   [len(self.weighting_histogram) -1]    tensors need the same shape
+        weight = np.array(self.weighting_histogram[target_bin])
+        sample = {'data': data, 'target': target, 'weight':weight}
         return sample
 
 class ChauffeurNet(nn.Module):
@@ -47,6 +64,7 @@ class ChauffeurNet(nn.Module):
         self.block2 = self.conv_block(16,32)
         self.block3 = self.conv_block(32,64)
 
+        self.drop1 = nn.Dropout(p=0.1, inplace=True)
         self.fc1 = nn.Linear(64*5*8, 256)
         self.fc1_relu = nn.ReLU(inplace=True)
         self.fc2 = nn.Linear(256, 1)
@@ -56,6 +74,7 @@ class ChauffeurNet(nn.Module):
         x = self.block2(x)
         x = self.block3(x)
         x = x.view(-1, 64*5*8)
+        x = self.drop1(x)
         x = self.fc1(x)
         x = self.fc1_relu(x)
         x = self.fc2(x)
@@ -64,14 +83,22 @@ class ChauffeurNet(nn.Module):
 def train(model, device, train_loader, optimizer, epoch):
     model.train()
     log_interval = 10
-    criterion = nn.MSELoss()
+    criterion = nn.MSELoss(reduction='none')
     for batch_idx, sampled_batch in enumerate(train_loader):
         data = sampled_batch['data']
         target = sampled_batch['target']
-        data, target = data.to(device), target.to(device)
+        weight = sampled_batch['weight']
+        data, target, weight = data.to(device), target.to(device), weight.to(device)
         optimizer.zero_grad()
         output = model(data)
+
+        diff = torch.abs(output - target)
+        indices = ((diff > 0.0123599).type(torch.float32)) * 5.0
+        weight = indices
+
         loss = criterion(output, target)
+        loss = loss * weight
+        loss = loss.mean()
         loss.backward()
         optimizer.step()
         if batch_idx % log_interval == 0:
@@ -85,10 +112,10 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
     torch.manual_seed(0)
 
-    batch_size = 16
-    lr = 0.005
+    batch_size = 128
+    lr = 0.0001
     shuffle = True
-    epochs = 20
+    epochs = 100
     #TODO will shuflle now, but when using LSTM, we will not
     dataset = DrivingDataset("../simulator/data/pytorch_data.h5")
     train_loader = torch.utils.data.DataLoader(dataset,batch_size=batch_size, shuffle=shuffle)

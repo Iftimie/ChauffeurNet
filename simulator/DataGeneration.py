@@ -133,11 +133,11 @@ class Renderer:
 
 if __name__ =="__main__":
 
-    render = False
-    if render:
-        renderer = Renderer(debug=False)
-        renderer.pre_simulate()
-        renderer.render()
+    # render = True
+    # if render:
+    #     renderer = Renderer(debug=False)
+    #     renderer.pre_simulate()
+    #     renderer.render()
 
     file = h5py.File("data/pytorch_data.h5", "r")
     dset_data = file['data']

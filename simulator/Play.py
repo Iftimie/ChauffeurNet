@@ -71,13 +71,16 @@ class Simulator:
     def test(self):
         model = ChauffeurNet()
         model.load_state_dict(torch.load("../network/ChauffeurNet.pt"))
+        model.eval()
 
         recordings = self.load_recording()
         path = self.get_path(recordings)
         self.in_res = (72, 96)
 
         image_test_nn = np.zeros((480, 640, 3), np.uint8)
-
+        self.vehicle.render_radius = 15
+        self.vehicle.render_thickness = 5
+        self.vehicle.speed = 0
         with torch.no_grad():
             for i in range(recordings.shape[0]):
 
@@ -104,7 +107,10 @@ class Simulator:
                 image_concatenated[0,0, ...] = gray_images_resized[0]
                 image_concatenated[0,1, ...] = gray_images_resized[1]
                 image_concatenated[0,2, ...] = gray_images_resized[2]
-                image_concatenated = image_concatenated.astype(np.float32) / 255.0
+
+                input_to_network = np.transpose(np.squeeze(image_concatenated), (1, 2, 0))
+
+                image_concatenated = image_concatenated.astype(np.float32) / 255.0 - 0.5
 
                 self.vehicle.interpret_key(key)
                 self.vehicle.turn_angle = model(torch.from_numpy(image_concatenated))
@@ -114,7 +120,8 @@ class Simulator:
 
                 image_test_nn = self.world.render(image=image_test_nn, C=self.camera)
                 cv2.imshow("Simulator", image_test_nn)
-                cv2.waitKey(1)
+                cv2.imshow("input", input_to_network)
+                cv2.waitKey(33)
 
 
 
@@ -173,7 +180,7 @@ class Simulator:
 
 if __name__ =="__main__":
     #simulator = Simulator(mode = EnumMode.simulate)
-    #simulator = Simulator(mode = EnumMode.playback)
-    #simulator.run()
+    # simulator = Simulator(mode = EnumMode.playback)
+    # simulator.run()
     simulator = Simulator(mode = EnumMode.test)
     simulator.test()
