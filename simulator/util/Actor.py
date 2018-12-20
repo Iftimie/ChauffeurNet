@@ -22,6 +22,8 @@ class Actor:
         self.vertices_W = self.T.dot(self.vertices_L)
 
         self.DRAW_POLYGON = True
+        self.render_thickness = 5
+
         pass
 
     def render(self, image, C):
@@ -37,10 +39,10 @@ class Actor:
             if self.DRAW_POLYGON:
                 image = cv2.fillPoly(image, [pts], color=self.c)
             else:
-                image = cv2.polylines(image, [pts], False, (0, 255, 0), 10)
+                image = cv2.polylines(image, [pts], False, color=self.c,thickness= self.render_thickness)
         return image
 
-    def set_transform(self, x=0, y=0, z=0, roll=0, yaw=0, pitch=0):
+    def set_transform(self, x=None, y=None, z=None, roll=None, yaw=None, pitch=None):
         """
         values in world coordinates
 
@@ -51,6 +53,14 @@ class Actor:
         :param yaw:   angle in radians around Y axis
         :param pitch: angle in radians around X axis
         """
+        current_params = params_from_tansformation(self.T)
+        if x is None: x = current_params[0]
+        if y is None: y = current_params[1]
+        if z is None: z = current_params[2]
+        if roll is None: roll = current_params[3]
+        if yaw is None: yaw = current_params[4]
+        if pitch is None: pitch = current_params[5]
+
         self.T = transformation_matrix(x, y, z, roll, yaw, pitch)
         self.vertices_W = self.T.dot(self.vertices_L)
         return

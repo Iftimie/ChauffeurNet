@@ -4,8 +4,6 @@ import numpy as np
 import time
 import h5py
 from util.World import World
-from util.LaneMarking import LaneMarking
-from util.Camera import Camera
 from util.Vehicle import Vehicle
 
 
@@ -34,6 +32,7 @@ class Simulator:
         if os.path.exists(self.world.save_path):
             self.world = self.world.load_world()
             self.camera = self.world.get_camera_from_actors()
+            self.camera.set_transform(y=-1500)
             self.vehicle = Vehicle(self.camera)
             self.vehicle.set_transform(x = 100)
             self.world.actors.append(self.vehicle)
@@ -59,6 +58,7 @@ class Simulator:
                 break
 
             if self.mode == EnumMode.playback:
+                if self.iter == len(self.recording):break
                 key = self.recording[self.iter,0]
                 x = self.recording[self.iter,1]
                 y = self.recording[self.iter,2]

@@ -48,7 +48,7 @@ class Camera(Actor):
         return K
 
     #@Override
-    def set_transform(self, x = 0,y = 0,z = 0,roll = 0, yaw = 0, pitch = 0):
+    def set_transform(self, x=None, y=None, z=None, roll=None, yaw=None, pitch=None):
         super(Camera, self).set_transform(x ,y ,z ,roll , yaw , pitch )
         self.C = self.create_cammera_matrix(self.T, self.K)
 

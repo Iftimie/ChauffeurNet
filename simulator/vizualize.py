@@ -8,6 +8,8 @@ from util.Camera import Camera
 
 
 def plot_world(vertices, K, R, T):
+    plt.ion()
+    plt.show()
     plt.rcParams['figure.figsize'] = [6, 6]
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -53,12 +55,14 @@ def plot_world(vertices, K, R, T):
     colour = (0.1, 0.8, 0.5, trans)
     ax.add_collection3d(Poly3DCollection(verts, facecolors=colour, linewidths=1, edgecolors='r', alpha=.15))
 
-    plt.show()
+    plt.draw()
+    plt.pause(5)
 
-cam_config = {"img_w":640, "img_h": 480, "f_cm":0.238, "pixel_width_cm":0.0003}
-actors = []
-actors.append(LaneMarking())
-world = World(actors=actors)
-camera = Camera(cam_config)
-camera.set_transform(x = 0, y = -1000, z = 0, roll = 0, yaw = 0, pitch =-1.5708)
-plot_world(world.actors[0].vertices_W, camera.K, camera.T[:3,:3], camera.T[:3,3])
+world = World()
+world = world.load_world()
+camera = Camera()
+all_vertices = []
+for actor in world.actors:
+    all_vertices.append(actor.vertices_W)
+all_vertices = np.hstack(tuple(all_vertices))
+plot_world(all_vertices, camera.K, camera.T[:3,:3], camera.T[:3,3])

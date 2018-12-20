@@ -7,12 +7,13 @@ from .transform.util import rot_y
 
 class Vehicle(Actor):
 
-    def __init__(self, camera = None):
+    def __init__(self, camera = None, play = True):
         """
         transform: 4x4 matrix to transform from local system to world system
         vertices_L: point locations expressed in local coordinate system in centimeters. vertices matrix will have shape
                 4xN
         vertices_W: point locations expressed in world coordinate system
+        play: if playing, the colours and the shape of the future positions will be different
         """
         super().__init__()
         self.vertices_L = np.array([[-30, 0, -60, 1], #x, y, z   x increases to right, y up, z forward
@@ -33,6 +34,12 @@ class Vehicle(Actor):
 
         self.range_angle = (-0.785398, 0.785398)
 
+        if play:
+            self.render_radius = 2
+            self.render_thickness = -1
+        else:
+            self.render_radius = 15
+            self.render_thickness = 5
     #@Override
     def interpret_key(self, key):
         if key == 119:
@@ -61,7 +68,7 @@ class Vehicle(Actor):
         if self.next_locations.shape[1] > 1:
             x, y = C.project(self.next_locations)
             for i in range(0, len(x)):
-                image = cv2.circle(image, (x[i], y[i]), 1, (0, 0, 255), -1)
+                image = cv2.circle(image, (x[i], y[i]), self.render_radius, (0, 0, 255),self.render_thickness)
         return image
 
     # @Override
