@@ -29,9 +29,9 @@ class Renderer:
         self.all_states = []
         self.debug = debug
 
-        self.input_resolution = (120, 160)
+        self.in_res = (72, 96)
         self.h5_file = h5py.File("data/pytorch_data.h5", "w")
-        self.dset_data = self.h5_file.create_dataset("data", (0,120,160,3), dtype=np.uint8,maxshape=(None, 120,160,3), chunks=(1,120,160,3))
+        self.dset_data = self.h5_file.create_dataset("data", (0,3,self.in_res[0],self.in_res[1]), dtype=np.uint8,maxshape=(None, 3, self.in_res[0],self.in_res[1]), chunks=(1,3,self.in_res[0],self.in_res[1]))
         self.dset_labels = self.h5_file.create_dataset("labels", (0,1), dtype=np.float32, maxshape=(None, 1), chunks=(1,1))
 
         atexit.register(self.cleanup)
@@ -111,12 +111,12 @@ class Renderer:
         gray_images_resized = []
         for image in images:
             image_ = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            image_ = cv2.resize(image_,(160,120))
+            image_ = cv2.resize(image_,(self.in_res[1],self.in_res[0]))
             gray_images_resized.append(image_)
-        image_concatenated = np.empty((120,160,3), np.uint8)
-        image_concatenated[...,0] = gray_images_resized[0]
-        image_concatenated[...,1] = gray_images_resized[1]
-        image_concatenated[...,2] = gray_images_resized[2]
+        image_concatenated = np.empty((3,self.in_res[0],self.in_res[1]), np.uint8)
+        image_concatenated[0,...] = gray_images_resized[0]
+        image_concatenated[1,...] = gray_images_resized[1]
+        image_concatenated[2,...] = gray_images_resized[2]
 
         if self.debug:
             cv2.imshow("Image lanes", gray_images_resized[0])
@@ -124,7 +124,7 @@ class Renderer:
             cv2.imshow("Image path", gray_images_resized[2])
             cv2.waitKey(1)
 
-        self.dset_data.resize((index + 1, 120, 160, 3))
+        self.dset_data.resize((index + 1, 3, self.in_res[0],self.in_res[1]))
         self.dset_labels.resize((index + 1, 1))
         self.dset_data[index,...] = image_concatenated
         label_array = np.array([labels])
@@ -144,8 +144,9 @@ if __name__ =="__main__":
     dset_labels = file['labels']
     for i in range(dset_data.shape[0]):
         image_bgr = dset_data[i,...]
+        image_bgr = np.transpose(image_bgr,(1,2,0))
+        print (image_bgr.shape)
         labels = dset_labels[i]
         cv2.imshow("image_bgr", image_bgr)
-        print (labels)
         cv2.waitKey(33)
     file.close()

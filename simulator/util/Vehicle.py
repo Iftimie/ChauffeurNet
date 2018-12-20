@@ -25,7 +25,7 @@ class Vehicle(Actor):
         self.vertices_W = self.T.dot(self.vertices_L)
         self.camera = camera
 
-        #Kinematic model and variables as in:
+        #Kinematic network and variables as in:
         #https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/10-Unscented-Kalman-Filter.ipynb
         self.turn_angle = 0        #alpha in radians
         self.wheel_base = 120 #W length of car
