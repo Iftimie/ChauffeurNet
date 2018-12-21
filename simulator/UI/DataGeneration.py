@@ -1,19 +1,19 @@
 import cv2
 import os
 import numpy as np
-from util.World import World
-from util.Vehicle import Vehicle
-from util.Camera import Camera
-from util.LaneMarking import LaneMarking
-from util.Path import Path
+from simulator.util.World import World
+from simulator.util.Vehicle import Vehicle
+from simulator.util.Camera import Camera
+from simulator.util.LaneMarking import LaneMarking
+from simulator.util.Path import Path
 import atexit
-from GUI import EventBag
+from simulator.UI.GUI import EventBag
 from network.models.SimpleConv import DrivingDataset
 
 class Renderer:
 
-    def __init__(self, debug = False):
-        self.world = World()
+    def __init__(self, world_path="", h5_path="", event_bag_path = ""):
+        self.world = World(world_path = world_path)
         if not os.path.exists(self.world.save_path):
             raise ("No world available")
         self.world.load_world()
@@ -23,13 +23,15 @@ class Renderer:
         self.vehicle.set_transform(x = 100)
         self.world.actors.append(self.vehicle)
 
-        self.event_bag = EventBag("data/recording.h5", record=False)
+        self.h5_path = h5_path
+        self.event_bag_path = event_bag_path
+        self.event_bag = EventBag(self.event_bag_path, record=False)
 
         self.all_states = []
 
         self.in_res = (72, 96)
 
-        self.dataset = DrivingDataset("data/pytorch_data.h5", mode= "write")
+        self.dataset = DrivingDataset(self.h5_path, mode= "write")
 
         atexit.register(self.cleanup)
 
@@ -107,7 +109,7 @@ class Renderer:
 
     def visualize(self):
         self.dataset.file.close()
-        self.dataset = DrivingDataset("data/pytorch_data.h5", mode = "read")
+        self.dataset = DrivingDataset(self.h5_path, mode = "read")
 
         for i in range(len(self.dataset)):
             sample = self.dataset[i]
@@ -120,7 +122,7 @@ class Renderer:
 
 if __name__ =="__main__":
 
-    renderer = Renderer(debug=False)
+    renderer = Renderer( world_path= "../data/world.h5", h5_path="../data/pytorch_data.h5", event_bag_path="../data/recording.h5")
     renderer.render()
     renderer.visualize()
 

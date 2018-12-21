@@ -1,13 +1,13 @@
 import cv2
 import numpy as np
 import os
-from util.World import World
-from util.LaneMarking import LaneMarking
-from util.CurvedLaneMarking import CurvedLaneMarking
-from util.TrafficLight import TrafficLight
-from util.Camera import Camera
-from util.Vehicle import Vehicle
-from GUI import GUI
+from simulator.util.World import World
+from simulator.util.LaneMarking import LaneMarking
+from simulator.util.CurvedLaneMarking import CurvedLaneMarking
+from simulator.util.TrafficLight import TrafficLight
+from simulator.util.Camera import Camera
+from simulator.util.Vehicle import Vehicle
+from simulator.UI.GUI import GUI
 
 """
 Keys:
@@ -32,8 +32,8 @@ C select camera immediately
 
 class WorldEditor(GUI):
 
-    def __init__(self):
-        super(WorldEditor, self).__init__("Editor")
+    def __init__(self, world_path=""):
+        super(WorldEditor, self).__init__("Editor", world_path)
 
         self.selected_index = -1
         self.selected_actor = None
@@ -97,7 +97,7 @@ class WorldEditor(GUI):
         self.selected_actor.set_active()
 
 if __name__ =="__main__":
-    worldEditor = WorldEditor()
+    worldEditor = WorldEditor("../data/world.h5")
     worldEditor.run()
 
 

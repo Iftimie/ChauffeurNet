@@ -35,17 +35,19 @@ class Config:
 
 
 class ConfigSimpleConv(Config):
-    def __init__(self):
+    def __init__(self, root_path = ".."):
         super().__init__()
         from models.SimpleConv import DrivingDataset, ChauffeurNet, train_simple_conv
         self.batch_size   = 128
         self.lr           = 0.0001
         self.shuffle      = True
         self.epochs       = 100
-        self.dataset      = "../simulator/data/pytorch_data.h5"
+        self.dataset      = os.path.join(root_path,"simulator/data/pytorch_data.h5")
         self.log_interval = 10
         self.experiment_name = "whatever"
-        self.paths_to_copy = ["../network/models/SimpleConv.py","../network/train.py","../simulator"]
+        self.paths_to_copy = [os.path.join(root_path,"network/models/SimpleConv.py"),
+                              os.path.join(root_path,"network/train.py"),
+                              os.path.join(root_path,"simulator")]
 
 
         self.train_loader = torch.utils.data.DataLoader(dataset = DrivingDataset(self.dataset),

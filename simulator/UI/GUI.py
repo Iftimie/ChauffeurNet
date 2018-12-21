@@ -1,5 +1,5 @@
-from util.World import World
-from util.Camera import Camera
+from simulator.util.World import World
+from simulator.util.Camera import Camera
 import cv2
 import os
 import numpy as np
@@ -20,18 +20,20 @@ class GUI:
             pass
         GUI.mouse = (x,y)
 
-    def __init__(self, window_name = ""):
+    def __init__(self, window_name = "", world_path=""):
 
         cv2.namedWindow(window_name)
         cv2.setMouseCallback(window_name, GUI.mouse_listener)
 
-        self.world = World()
+        self.world = World(world_path = world_path)
         if os.path.exists(self.world.save_path):
             self.world.load_world()
             self.camera = self.world.get_camera_from_actors()
+            print ("World loaded")
         else:
             self.camera = Camera()
             self.world.actors.append(self.camera)
+            print ("Warning, world not loaded, creating a new one")
 
         self.pressed_key = None
         self.display_image = np.zeros((480, 640, 3), np.uint8)

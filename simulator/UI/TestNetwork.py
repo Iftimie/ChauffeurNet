@@ -1,32 +1,27 @@
 import cv2
-import os
 import numpy as np
-import time
-import h5py
-from util.World import World
-from util.Vehicle import Vehicle
-from util.Camera import Camera
-from util.LaneMarking import LaneMarking
+from simulator.util.Vehicle import Vehicle
+from simulator.util.Camera import Camera
+from simulator.util.LaneMarking import LaneMarking
 from network.models.SimpleConv import ChauffeurNet
-from util.Path import Path
+from simulator.util.Path import Path
 import torch
-from GUI import GUI
-from GUI import EventBag
-import requests
-
+from simulator.UI.GUI import GUI
+from simulator.UI.GUI import EventBag
 
 class Simulator(GUI):
 
-    def __init__(self):
-        super(Simulator, self).__init__("Simulator")
+    def __init__(self, event_bag_path = "", network_path = "", world_path=""):
+        super(Simulator, self).__init__("Simulator", world_path=world_path)
         self.camera.set_transform(y=-1500)
         self.vehicle = Vehicle(self.camera)
         self.vehicle.set_transform(x = 100)
         self.world.actors.append(self.vehicle)
 
         #event_bag represents the data that the user generated. Has values such as the key pressed, and mouse
-        self.event_bag = EventBag("data/recording.h5", record=False)
+        self.event_bag = EventBag(event_bag_path, record=False)
         self.in_res = (72, 96)
+        self.network_path = network_path
 
 
     #TODO refactor this because it is very similar to pre_simulate() from DataGeneration.py
@@ -51,7 +46,7 @@ class Simulator(GUI):
     #@Override
     def run(self):
         model = ChauffeurNet()
-        model.load_state_dict(torch.load("../network/ChauffeurNet.pt"))
+        model.load_state_dict(torch.load(self.network_path))
         model.eval()
 
         path = self.get_path()
@@ -105,5 +100,6 @@ class Simulator(GUI):
             self.running = False
 
 if __name__ =="__main__":
-    simulator = Simulator()
+    simulator = Simulator(event_bag_path="../data/recording.h5", network_path="../../network/ChauffeurNet.pt",
+                          world_path="simulator/data/world.h5" )
     simulator.run()

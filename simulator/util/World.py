@@ -15,10 +15,10 @@ import importlib
 
 class World(Actor):
 
-    def __init__(self, actors = [],):
+    def __init__(self, actors = [], world_path = "" ):
         super().__init__()
         self.actors = actors
-        self.save_path = "data/world.h5"
+        self.save_path = world_path
         pass
 
     #@Override
@@ -89,4 +89,3 @@ class World(Actor):
                 instance = class_()
                 instance.from_h5py(file[class_name][i])
                 self.actors.append(instance)
-        print ("world loaded")

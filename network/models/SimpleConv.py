@@ -59,8 +59,8 @@ class DrivingDataset(Dataset):
         self.mode = mode
         if mode == "read":
             self.file = h5py.File(hdf5_file,"r")
-            self.dset_data = file['data']
-            self.dset_target = file['labels']
+            self.dset_data = self.file['data']
+            self.dset_target = self.file['labels']
             hist, bin_edges = np.histogram(self.dset_target[...], bins=bins, range=range, density=True)
             hist = hist / np.sum(hist)
             self.weighting_histogram = (1 / (hist + 0.01)).astype(np.float32)
