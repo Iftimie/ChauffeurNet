@@ -75,7 +75,6 @@ class World(Actor):
         return camera
 
     def load_world(self):
-        world_object = World()
         file = h5py.File(self.save_path, "r")
         for class_name in file.keys():
             # module_imported =importlib.import_module("util")
@@ -84,7 +83,5 @@ class World(Actor):
             for i in range(file[class_name].shape[0]):
                 instance = class_()
                 instance.from_h5py(file[class_name][i])
-                world_object.actors.append(instance)
-
-        return world_object
-
+                self.actors.append(instance)
+        print ("world loaded")

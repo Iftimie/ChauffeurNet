@@ -7,6 +7,7 @@ from util.CurvedLaneMarking import CurvedLaneMarking
 from util.TrafficLight import TrafficLight
 from util.Camera import Camera
 from util.Vehicle import Vehicle
+from GUI import GUI
 
 """
 Keys:
@@ -29,45 +30,23 @@ C select camera immediately
 """
 
 
-class WorldEditor:
+class WorldEditor(GUI):
 
-    def __init__(self):
-        cv2.namedWindow("Editor")
-        cv2.setMouseCallback("Editor", self.mouse_listener)
-
-        self.world = World()
-        if os.path.exists(self.world.save_path):
-            self.world = self.world.load_world()
-            self.camera = self.world.get_camera_from_actors()
-        else:
-            self.camera = Camera()
-            self.world.actors.append(LaneMarking())
-            self.world.actors.append(self.camera)
+    def __init__(self, window_name = "Editor"):
+        super(WorldEditor, self).__init__(window_name)
 
         self.selected_index = -1
         self.selected_actor = None
 
-
-    def mouse_listener(self, event, x, y, flags, param):
-        if event == cv2.EVENT_LBUTTONDOWN:
-            print (event)
-            pass
-        elif event == cv2.EVENT_LBUTTONUP:
-            print (event)
-            pass
-
     def edit(self):
-        image = np.zeros((480, 640, 3), np.uint8)
-
         while True:
-            image = self.world.render(image=image, C=self.camera)
-            cv2.imshow("Editor", image)
-            key = cv2.waitKey(33)
-            self.interpret_key(key)
+            super(WorldEditor, self).interact()
             if self.selected_actor is not None:
-                self.selected_actor.interpret_key(key)
+                self.selected_actor.interpret_key(self.pressed_key)
 
-    def interpret_key(self, key):
+    #@Override
+    def interpret_key(self):
+        key = self.pressed_key
         if key == 9  or key == 27:
             self.select_actor(key)
         if key in [49, 50, 51, 52]:
@@ -105,11 +84,11 @@ class WorldEditor:
         if key == 52:
             new_actor = Vehicle()
 
+        # Take the transformation params from the previous actor to ease the design process
         if self.selected_actor is not None and type(self.selected_actor) is not Camera:
-            last_traform = self.selected_actor.get_transform()
-            last_traform = list(last_traform)
-            last_traform[1] = 0 # in case it is camera (which is up above)
-            new_actor.set_transform(*last_traform)
+            x, y, z, roll, yaw, pitch = self.selected_actor.get_transform()
+            y = 0 # in case it is camera (which is up above (-1500 height))
+            new_actor.set_transform(x, y, z, roll, yaw, pitch)
             self.selected_actor.set_inactive()
         else:
             x, y, z, roll, yaw, pitch = self.camera.get_transform()

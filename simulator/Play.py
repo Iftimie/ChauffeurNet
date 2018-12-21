@@ -7,7 +7,7 @@ from util.World import World
 from util.Vehicle import Vehicle
 from util.Camera import Camera
 from util.LaneMarking import LaneMarking
-from network.train import ChauffeurNet
+from network.models.SimpleConv import ChauffeurNet
 from util.Path import Path
 import torch
 
@@ -36,7 +36,7 @@ class Simulator:
         cv2.setMouseCallback("Simulator", mouse_listener)
         self.world = World()
         if os.path.exists(self.world.save_path):
-            self.world = self.world.load_world()
+            self.world.load_world()
             self.camera = self.world.get_camera_from_actors()
             self.camera.set_transform(y=-1500)
             self.vehicle = Vehicle(self.camera)

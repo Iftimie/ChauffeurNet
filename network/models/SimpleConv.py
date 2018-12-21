@@ -3,6 +3,7 @@ import torch.nn as nn
 import h5py
 import numpy as np
 from torch.utils.data import Dataset
+import os
 
 """
 I define here the model, the dataset format and the training procedure for this specific model,
@@ -76,6 +77,11 @@ class DrivingDataset(Dataset):
         return sample
 
 def step_weighting_loss(target, output, criterion):
+    """
+        Weight each example by an amount. If the error between gt and output is > 0.012 (0.70 degrees) then the penalty
+        will be 5 otherwise the penalty is 0. This will force the network to learn better from hard examples and ignore
+        allready learned examples.
+    """
     diff = torch.abs(output - target)
     indices = ((diff > 0.0123599).type(torch.float32)) * 5.0
     weight = indices
@@ -85,7 +91,7 @@ def step_weighting_loss(target, output, criterion):
     loss = loss.mean()
     return loss
 
-def train(model, cfg, train_loader, optimizer, epoch):
+def train_simple_conv(model, cfg, train_loader, optimizer, epoch):
     model.train()
     criterion = nn.MSELoss(reduction='none')
     for batch_idx, sampled_batch in enumerate(train_loader):
@@ -104,4 +110,5 @@ def train(model, cfg, train_loader, optimizer, epoch):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
+            torch.save(model.state_dict(), os.path.join(cfg.checkpoints_path,"ChauffeurNet_{}_{}.pt".format(epoch,batch_idx)))
 

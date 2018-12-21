@@ -30,7 +30,8 @@ class Renderer:
         self.debug = debug
 
         self.in_res = (72, 96)
-        self.h5_file = h5py.File("data/pytorch_data.h5", "w")
+        self.pytorch_h5file_path = "data/pytorch_data.h5"
+        self.h5_file = h5py.File(self.pytorch_h5file_path, "w")
         self.dset_data = self.h5_file.create_dataset("data", (0,3,self.in_res[0],self.in_res[1]), dtype=np.uint8,maxshape=(None, 3, self.in_res[0],self.in_res[1]), chunks=(1,3,self.in_res[0],self.in_res[1]))
         self.dset_labels = self.h5_file.create_dataset("labels", (0,1), dtype=np.float32, maxshape=(None, 1), chunks=(1,1))
 
@@ -71,6 +72,8 @@ class Renderer:
         self.path = Path(self.all_states)
 
     def render(self):
+
+        self.pre_simulate()
         channels = {}
 
         for i in range(len(self.all_states)):
@@ -130,23 +133,23 @@ class Renderer:
         label_array = np.array([labels])
         self.dset_labels[index,...] = label_array
 
+    def visualize(self):
+        file = h5py.File(self.pytorch_h5file_path, "r")
+        dset_data = file['data']
+        dset_labels = file['labels']
+        for i in range(dset_data.shape[0]):
+            image_bgr = dset_data[i, ...]
+            image_bgr = np.transpose(image_bgr, (1, 2, 0))
+            labels = dset_labels[i]
+            print(labels)
+            cv2.imshow("image_bgr", image_bgr)
+            cv2.waitKey(33)
+        file.close()
 
 if __name__ =="__main__":
 
-    # render = True
-    # if render:
-    #     renderer = Renderer(debug=False)
-    #     renderer.pre_simulate()
-    #     renderer.render()
+    renderer = Renderer(debug=False)
+    renderer.render()
+    renderer.visualize()
 
-    file = h5py.File("data/pytorch_data.h5", "r")
-    dset_data = file['data']
-    dset_labels = file['labels']
-    for i in range(dset_data.shape[0]):
-        image_bgr = dset_data[i,...]
-        image_bgr = np.transpose(image_bgr,(1,2,0))
-        print (image_bgr.shape)
-        labels = dset_labels[i]
-        cv2.imshow("image_bgr", image_bgr)
-        cv2.waitKey(33)
-    file.close()
+
