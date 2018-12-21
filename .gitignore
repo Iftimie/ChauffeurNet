@@ -1,4 +1,4 @@
 .idea
 *.pyc
-simulator/data/pytorch_data.h5
+data/*
 experiments/*

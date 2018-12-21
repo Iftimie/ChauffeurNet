@@ -2,9 +2,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 import numpy as np
 import math
-from util.World import World
-from util.LaneMarking import LaneMarking
-from util.Camera import Camera
+from simulator.util.World import World
+from simulator.util.LaneMarking import LaneMarking
+from simulator.util.Camera import Camera
 
 
 def plot_world(vertices, K, R, T):
@@ -58,8 +58,8 @@ def plot_world(vertices, K, R, T):
     plt.draw()
     plt.pause(5)
 
-world = World()
-world = world.load_world()
+world = World(world_path="../../data/world.h5")
+world.load_world()
 camera = Camera()
 all_vertices = []
 for actor in world.actors:

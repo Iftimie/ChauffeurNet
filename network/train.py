@@ -42,7 +42,7 @@ class ConfigSimpleConv(Config):
         self.lr           = 0.0001
         self.shuffle      = True
         self.epochs       = 100
-        self.dataset      = os.path.join(root_path,"simulator/data/pytorch_data.h5")
+        self.dataset      = os.path.join(root_path,"data/pytorch_data.h5")
         self.log_interval = 10
         self.experiment_name = "whatever"
         self.paths_to_copy = [os.path.join(root_path,"network/models/SimpleConv.py"),
