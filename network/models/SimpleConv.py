@@ -48,26 +48,38 @@ class ChauffeurNet(nn.Module):
 
 class DrivingDataset(Dataset):
 
-    def __init__(self, hdf5_file):
+    def __init__(self, hdf5_file, mode = "read"):
         """
         Args:
             hdf5_file (string): Path to the hdf5 file with annotations.
         """
-        file = h5py.File(hdf5_file,"r")
-        self.dset_data = file['data']
-        self.dset_target = file['labels']
-
         range = (-0.785398, 0.785398)
         bins = 45
-        hist,bin_edges = np.histogram(self.dset_target[...],bins=bins, range=range, density=True)
-        hist = hist / np.sum(hist)
-        self.weighting_histogram = (1 / (hist+0.01)).astype(np.float32)
-        self.bin_edges = bin_edges
+        self.in_res = (72, 96)
+        self.mode = mode
+        if mode == "read":
+            self.file = h5py.File(hdf5_file,"r")
+            self.dset_data = file['data']
+            self.dset_target = file['labels']
+            hist, bin_edges = np.histogram(self.dset_target[...], bins=bins, range=range, density=True)
+            hist = hist / np.sum(hist)
+            self.weighting_histogram = (1 / (hist + 0.01)).astype(np.float32)
+            self.bin_edges = bin_edges
+        elif mode == "write":
+            self.file = h5py.File(hdf5_file, "w")
+            self.dset_data = self.file.create_dataset("data", (0, 3, self.in_res[0], self.in_res[1]), dtype=np.uint8,
+                                                         maxshape=(None, 3, self.in_res[0], self.in_res[1]),
+                                                         chunks=(1, 3, self.in_res[0], self.in_res[1]))
+            self.dset_labels = self.file.create_dataset("labels", (0, 1), dtype=np.float32, maxshape=(None, 1),
+                                                           chunks=(1, 1))
+            self.write_idx = 0
 
     def __len__(self):
         return self.dset_data.shape[0]
 
     def __getitem__(self, idx):
+        if self.mode != "read":
+            raise ValueError ("Dataset opened with write mode")
         data = self.dset_data[idx,...].astype(np.float32) / 255.0 - 0.5
         target = self.dset_target[idx,...]
         target_bin = max(np.array([0]), min(np.digitize(target, self.bin_edges) - 1, np.array([len(self.weighting_histogram) -1])))
@@ -75,6 +87,16 @@ class DrivingDataset(Dataset):
         weight = np.array(self.weighting_histogram[target_bin])
         sample = {'data': data, 'target': target, 'weight':weight}
         return sample
+
+    def append(self, images_concatenated, labels=()):
+        if self.mode != "write":
+            raise ValueError ("Dataset opened with read mode")
+
+        self.dset_data.resize((self.write_idx + 1, 3, self.in_res[0], self.in_res[1]))
+        self.dset_labels.resize((self.write_idx + 1, 1))
+        self.dset_data[self.write_idx, ...] = images_concatenated
+        self.dset_labels[self.write_idx, ...] = np.array([labels])
+        self.write_idx +=1
 
 def step_weighting_loss(target, output, criterion):
     """

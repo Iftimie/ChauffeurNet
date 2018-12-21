@@ -91,3 +91,7 @@ class Camera(Actor):
     #@Override
     def interpret_key(self, key):
         super(Camera, self).interpret_key(key)
+        if key in [122, 120]:
+            self.update_delta(key)
+        if key in [43, 45]:
+            self.move_actor(key)

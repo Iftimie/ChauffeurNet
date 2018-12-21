@@ -40,27 +40,10 @@ class Vehicle(Actor):
         else:
             self.render_radius = 15
             self.render_thickness = 5
-    #@Override
-    def interpret_key(self, key):
-        if key == 119:
-            self.speed += 1
-        if key == 115:
-            self.speed -= 1
-        if key == 100:
-            self.turn_angle += 0.0174533 #1 degrees
-        if key == 97:
-            self.turn_angle -= 0.0174533
 
-        self.turn_angle = max(self.range_angle[0], min(self.turn_angle, self.range_angle[1])) #45 degrees
-        #TODO check what happens when speed is less than 0
+        self.is_active = True
 
-    #@Override
-    def interpret_mouse(self, mouse):
-        min_x = 150
-        max_x = 640-150
-        x_pos = max(min_x, min(mouse[0], max_x))  # 45 degrees
-        m_func = interp1d([min_x, max_x], [self.range_angle[0], self.range_angle[1]])
-        self.turn_angle = m_func(x_pos)
+
 
     #@Override
     def render(self, image, C):
@@ -104,7 +87,32 @@ class Vehicle(Actor):
         x += distance * sin(yaw)
         return z, x
 
-    def simulate(self):
+    # @Override
+    def interpret_key(self, key):
+        if self.is_active:
+            if key == 119:
+                self.speed += 1
+            if key == 115:
+                self.speed -= 1
+            if key == 100:
+                self.turn_angle += 0.0174533  # 1 degrees
+            if key == 97:
+                self.turn_angle -= 0.0174533
+            self.turn_angle = max(self.range_angle[0], min(self.turn_angle, self.range_angle[1]))  # 45 degrees
+
+    # @Override
+    def interpret_mouse(self, mouse):
+        if self.is_active and mouse is not None:
+            min_x = 150
+            max_x = 640 - 150
+            x_pos = max(min_x, min(mouse[0], max_x))  # 45 degrees
+            m_func = interp1d([min_x, max_x], [self.range_angle[0], self.range_angle[1]])
+            self.turn_angle = m_func(x_pos)
+
+    def simulate(self, key_pressed, mouse):
+        self.interpret_key(key_pressed)
+        self.interpret_mouse(mouse)
+
         x, y, z, roll, yaw, pitch = self.get_transform()
 
         if abs(self.turn_angle) > 0.0001: # is the car turning?

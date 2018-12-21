@@ -28,6 +28,11 @@ class World(Actor):
             image = actor.render(image, C)
         return image
 
+    # @Override
+    def simulate(self, pressed_key=None, mouse=None):
+        for actor in self.actors:
+            actor.simulate(pressed_key, mouse)
+
     def save_world(self, overwrite = False):
         for actor in self.actors:
             actor.set_inactive()

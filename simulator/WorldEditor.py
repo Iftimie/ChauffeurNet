@@ -32,35 +32,19 @@ C select camera immediately
 
 class WorldEditor(GUI):
 
-    def __init__(self, window_name = "Editor"):
-        super(WorldEditor, self).__init__(window_name)
+    def __init__(self):
+        super(WorldEditor, self).__init__("Editor")
 
         self.selected_index = -1
         self.selected_actor = None
+        self.camera.is_active = True
 
-    def edit(self):
+    #@Override
+    def run(self):
         while True:
             super(WorldEditor, self).interact()
             if self.selected_actor is not None:
                 self.selected_actor.interpret_key(self.pressed_key)
-
-    #@Override
-    def interpret_key(self):
-        key = self.pressed_key
-        if key == 9  or key == 27:
-            self.select_actor(key)
-        if key in [49, 50, 51, 52]:
-            self.add_actor(key)
-        if key == 13:
-            self.world.save_world(overwrite=True)
-        if key == 96:
-            self.delete_selected_actor()
-        if key == 99:
-            self.select_camera_immediately()
-
-        if key != -1: print ("Pressed key ", key)
-        # if key == 112:
-        #     self.camera.toggle_projection()
 
     def select_camera_immediately(self):
         if self.selected_actor != None:
@@ -114,7 +98,7 @@ class WorldEditor(GUI):
 
 if __name__ =="__main__":
     worldEditor = WorldEditor()
-    worldEditor.edit()
+    worldEditor.run()
 
 
 

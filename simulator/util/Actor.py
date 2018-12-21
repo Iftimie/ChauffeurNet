@@ -24,6 +24,8 @@ class Actor:
         self.DRAW_POLYGON = True
         self.render_thickness = 5
 
+        self.is_active = False
+
         pass
 
     def render(self, image, C):
@@ -78,9 +80,11 @@ class Actor:
 
     def set_inactive(self):
         self.c = (100,100,100)
+        self.is_active = False
 
     def set_active(self):
         self.c = (10,10,240)
+        self.is_active = True
 
     def update_delta(self, key):
         if key == 122:
@@ -89,11 +93,16 @@ class Actor:
             Actor.delta -=10
             Actor.delta = Actor.delta if Actor.delta>10 else 10
 
+    def simulate(self, pressed_key, mouse):
+        self.interpret_key(pressed_key)
+        self.interpret_mouse(mouse)
+
     def interpret_key(self, key):
-        if key in [122, 120]:
-            self.update_delta(key)
-        if key in [119, 100, 115, 97, 43, 45, 113, 101]:
-            self.move_actor(key)
+        if self.is_active:
+            if key in [122, 120]:
+                self.update_delta(key)
+            if key in [119, 100, 115, 97, 43, 45, 113, 101]:
+                self.move_actor(key)
 
     def interpret_mouse(self, mouse):
         """
