@@ -74,6 +74,8 @@ class World(Actor):
         for actor in self.actors:
             if type(actor) is Camera:
                 camera = actor
+                camera.C = camera.create_cammera_matrix4x4(camera.T,camera.K)
+                # when camera is loaded from hdf5, the object of type camera is created, then only the T is initialized from hdf5, C remains uninitialized
         if camera is None:
             camera = Camera()
             self.actors.append(camera)

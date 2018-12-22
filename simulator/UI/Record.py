@@ -11,6 +11,8 @@ class Recorder(GUI):
         self.vehicle = Vehicle(self.camera)
         self.vehicle.set_transform(x = 100)
         self.world.actors.append(self.vehicle)
+        self.vehicle.is_active = True
+        self.camera.is_active = False
 
         self.event_bag = EventBag(event_bag_path, record=True)
 
@@ -24,6 +26,7 @@ class Recorder(GUI):
 
         while self.running:
             self.interact()
+            self.world.simulate(self.pressed_key, GUI.mouse)
             self.event_bag.append([self.pressed_key, GUI.mouse[0], GUI.mouse[1]])
 
         print ("Game over")

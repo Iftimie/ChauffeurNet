@@ -66,7 +66,7 @@ class Simulator(GUI):
                     if type(actor) is LaneMarking:
                         image_lanes = actor.render(image_lanes, self.camera)
                 image_vehicle = self.vehicle.render(image_vehicle, self.camera)
-                image_path = path.render(image_path, self.camera)
+                image_path = path.render(image_path, self.camera, i)
 
                 images = [image_lanes,image_vehicle,image_path]
                 gray_images_resized = []
@@ -100,6 +100,6 @@ class Simulator(GUI):
             self.running = False
 
 if __name__ =="__main__":
-    simulator = Simulator(event_bag_path="../data/recording.h5", network_path="../../network/ChauffeurNet.pt",
-                          world_path="simulator/data/world.h5" )
+    simulator = Simulator(event_bag_path="../../data/recording.h5", network_path="../../data/ChauffeurNet.pt",
+                          world_path="../../data/world.h5" )
     simulator.run()

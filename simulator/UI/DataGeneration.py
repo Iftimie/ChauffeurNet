@@ -12,7 +12,7 @@ from network.models.SimpleConv import DrivingDataset
 
 class Renderer:
 
-    def __init__(self, world_path="", h5_path="", event_bag_path = ""):
+    def __init__(self, world_path="", h5_path="", event_bag_path = "", overwrite = False):
         self.world = World(world_path = world_path)
         if not os.path.exists(self.world.save_path):
             raise ("No world available")
@@ -31,12 +31,20 @@ class Renderer:
 
         self.in_res = (72, 96)
 
-        self.dataset = DrivingDataset(self.h5_path, mode= "write")
-
         atexit.register(self.cleanup)
 
+        self.overwrite = overwrite
+        if overwrite == True or not os.path.exists(self.h5_path):
+            self.dataset = DrivingDataset(self.h5_path, mode= "write")
+        else:
+            self.dataset = None
+            print ("Dataset allready exists, not overwriting")
+            return
+
+
     def cleanup(self):
-        self.dataset.file.close()
+        if self.dataset !=None:
+            self.dataset.file.close()
 
     def get_sin_noise(self):
         noise = np.sin(self.iter / 10) # * 5 (increase amplitude)
@@ -61,7 +69,7 @@ class Renderer:
         self.path = Path(self.all_states)
 
     @staticmethod
-    def render_on_separate_planes(world, vehicle, path):
+    def render_on_separate_planes(world, vehicle, path, path_idx):
         image_lanes = np.zeros((480, 640, 3), np.uint8)
         image_vehicle = np.zeros((480, 640, 3), np.uint8)
         image_path = np.zeros((480, 640, 3), np.uint8)
@@ -71,7 +79,7 @@ class Renderer:
             if type(actor) is LaneMarking:
                 image_lanes = actor.render(image_lanes, vehicle.camera)
         image_vehicle = vehicle.render(image_vehicle, vehicle.camera)
-        image_path = path.render(image_path, vehicle.camera)
+        image_path = path.render(image_path, vehicle.camera, path_idx)
         # image_lanes = self.vehicle.render(image_lanes, self.camera)
 
         return [image_lanes, image_vehicle, image_path]
@@ -87,10 +95,15 @@ class Renderer:
         image_concatenated[0, ...] = gray_images_resized[0]
         image_concatenated[1, ...] = gray_images_resized[1]
         image_concatenated[2, ...] = gray_images_resized[2]
+
+        # cv2.imshow("image1",gray_images_resized[0])
+        # cv2.imshow("image2",gray_images_resized[1])
+        # cv2.imshow("image3",gray_images_resized[2])
+        # cv2.waitKey(1)
         return image_concatenated
 
     def render(self):
-
+        if self.overwrite == False:return
         self.pre_simulate()
 
         for i in range(len(self.all_states)):
@@ -101,14 +114,15 @@ class Renderer:
             self.vehicle.vertices_W = self.all_states[i][3]
             self.vehicle.turn_angle = self.all_states[i][4]
 
-            image_planes = Renderer.render_on_separate_planes(self.world,self.vehicle, self.path)
+            image_planes = Renderer.render_on_separate_planes(self.world,self.vehicle, self.path, i)
             images_concatenated = Renderer.prepare_images(image_planes, self.in_res)
             self.dataset.append(images_concatenated,self.vehicle.turn_angle)
 
         print ("Rendering Done")
 
     def visualize(self):
-        self.dataset.file.close()
+        if self.dataset!=None:
+            self.dataset.file.close()
         self.dataset = DrivingDataset(self.h5_path, mode = "read")
 
         for i in range(len(self.dataset)):
@@ -118,11 +132,15 @@ class Renderer:
             image_bgr = np.transpose(image_bgr, (1, 2, 0))
             print(label)
             cv2.imshow("image_bgr", image_bgr)
-            cv2.waitKey(33)
+            cv2.waitKey(1)
 
 if __name__ =="__main__":
 
-    renderer = Renderer( world_path= "../data/world.h5", h5_path="../data/pytorch_data.h5", event_bag_path="../data/recording.h5")
+    renderer = Renderer( world_path= "../../data/world.h5",
+                         h5_path="../../data/pytorch_data.h5",
+                         event_bag_path="../../data/recording.h5",
+                         overwrite=False)
+    # DONT FORGET TO CHANGE OVERWRITE
     renderer.render()
     renderer.visualize()
 

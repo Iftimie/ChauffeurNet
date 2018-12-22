@@ -43,8 +43,11 @@ class WorldEditor(GUI):
     def run(self):
         while True:
             super(WorldEditor, self).interact()
+
+            # print (self.mouse_on_world(self.mouse))
             if self.selected_actor is not None:
                 self.selected_actor.interpret_key(self.pressed_key)
+                self.selected_actor.interpret_mouse(GUI.mouse_world)
 
     def select_camera_immediately(self):
         if self.selected_actor != None:
@@ -54,7 +57,7 @@ class WorldEditor(GUI):
         #keep the current index. do not change it
 
     def delete_selected_actor(self):
-        if self.selected_actor != None and type(self.selected_actor) is not Camera:
+        if self.selected_actor != None :
             self.world.actors.remove(self.selected_actor)
             self.selected_index = 0
 
@@ -84,7 +87,7 @@ class WorldEditor(GUI):
         self.selected_actor.set_active()
 
     def select_actor(self, key):
-        if self.selected_actor != None:
+        if self.selected_actor != None and self.selected_actor != self.camera:
             self.selected_actor.set_inactive()
         if key == 9:
             self.selected_index+=1
@@ -96,8 +99,29 @@ class WorldEditor(GUI):
             self.selected_actor = self.world.actors[self.selected_index]
         self.selected_actor.set_active()
 
+    # @Override
+    def interpret_key(self):
+        key = self.pressed_key
+        if key == 9 or key == 27:
+            self.select_actor(key)
+        if key in [49, 50, 51, 52]:
+            self.add_actor(key)
+        if key == 13:
+            self.world.save_world(overwrite=True)
+        if key == 96:
+            self.delete_selected_actor()
+        if key == 99:
+            self.select_camera_immediately()
+        if key == 109:
+            self.selected_actor.toggle_move_by_mouse()
+
+        if key != -1: print("Pressed key ", key)
+        # if key == 112:
+        #     self.camera.toggle_projection()
+
+
 if __name__ =="__main__":
-    worldEditor = WorldEditor("../data/world.h5")
+    worldEditor = WorldEditor("../../data/world.h5")
     worldEditor.run()
 
 

@@ -1,6 +1,7 @@
 from .Actor import Actor
 import numpy as np
 from .transform.util import params_from_tansformation
+import cv2
 
 class Path(Actor):
 
@@ -24,5 +25,24 @@ class Path(Actor):
         self.render_thickness = 40
         self.DRAW_POLYGON = False
         self.c = (255,0,0)
+        self.future_positions = 250 # we only want to render the next 200 positions from the current index
 
+    def render(self, image, C, path_idx):
+        """
+        :param image: image on which this actor will be renderd on
+        :param C:     camera matrix
+        :param path_idx: since the path contains all indices, we don't want to render them all cause it will cause a mess
+        we want to render only the next positions
+        :return:      image with this object renderd
+        """
+        if self.vertices_W.shape[1] > 1:
+            selected_for_projection = self.vertices_W[:,path_idx-50:path_idx+self.future_positions]
+            x, y = C.project(selected_for_projection)
+            pts = np.array([x, y]).T
+            pts = pts.reshape((-1, 1, 2))
+            if self.DRAW_POLYGON:
+                image = cv2.fillPoly(image, [pts], color=self.c)
+            else:
+                image = cv2.polylines(image, [pts], False, color=self.c,thickness= self.render_thickness)
+        return image
 

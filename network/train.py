@@ -8,6 +8,7 @@ class Config:
     def __init__(self):
         torch.manual_seed(0)
         self.use_cuda = torch.cuda.is_available()
+        print (self.use_cuda)
         self.device = torch.device("cuda" if self.use_cuda else "cpu")
         self.train_loader       = None
         self.model              = None
@@ -54,6 +55,9 @@ class ConfigSimpleConv(Config):
                                                batch_size=self.batch_size,
                                                shuffle=self.shuffle)
         self.model = ChauffeurNet().to(self.device)
+
+        self.model.load_state_dict(torch.load("../experiments/2018-12-21_21-38-57_whatever/checkpoints/ChauffeurNet_99_120.pt"))
+
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.training_procedure = train_simple_conv
 

@@ -13,7 +13,7 @@ class Camera(Actor):
             self.cam_config = {"img_w": 640, "img_h": 480, "f_cm": 0.238, "pixel_width_cm": 0.0003}
         else:
             self.cam_config = cam_config
-        self.K = self.create_K(self.cam_config)
+        self.K = self.create_K_4x4(self.cam_config)
         self.set_transform(x=0, y=-1500, z=0, roll=0, yaw=0, pitch=-1.5708)
 
         self.project = self.project_perspective
@@ -26,6 +26,23 @@ class Camera(Actor):
         that matrix will do the inverse of translation followed by inverse of rotation followed by camera matrix
         """
         C = K.dot(np.linalg.inv(T)[:3,:])
+        return C
+
+    def create_cammera_matrix4x4(self, T, K):
+        """
+        Create camera matrix. it will be a 4x4 matrix
+        T defines the camera rotation and translation in world coordinate system.
+        we need a matrix that will transform points from world coordinates to camera coordinates in order to project them
+        that matrix will do the inverse of translation followed by inverse of rotation followed by camera matrix
+
+        Maybe using a matrix with smaller values, it will reduce some noise in projection???
+
+        Found some hints at the following links. It is a great course, and I addapted for my usage. The camera projection matrix there is not the same as in here
+        http://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/
+        https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/building-basic-perspective-projection-matrix
+        http://www.scratchapixel.com/lessons/3d-basic-rendering/3d-viewing-pinhole-camera/virtual-pinhole-camera-model
+        """
+        C = K.dot(np.linalg.inv(T))
         return C
 
     def create_K(self, cam_config):
@@ -47,10 +64,42 @@ class Camera(Actor):
 
         return K
 
+    def create_K_4x4(self,cam_config):
+        """
+
+        Maybe using a matrix with smaller values, it will reduce some noise in projection???
+
+        Found some hints at the following links. It is a great course, and I addapted for my usage. The camera projection matrix there is not the same as in here
+        http://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/
+        https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/building-basic-perspective-projection-matrix
+        http://www.scratchapixel.com/lessons/3d-basic-rendering/3d-viewing-pinhole-camera/virtual-pinhole-camera-model
+        :param cam_config:
+        :return:
+        """
+        img_w = cam_config["img_w"]
+        img_h = cam_config["img_h"]
+        f_cm = cam_config["f_cm"]
+        pixel_width = cam_config["pixel_width_cm"]
+
+        fx = f_cm / pixel_width
+        fy = f_cm / pixel_width
+        cx = img_w / 2
+        cy = img_h / 2
+
+        K = np.eye(4)
+        K[0, 0] = fx
+        K[1, 1] = fy
+        K[0, 2] = cx
+        K[1, 2] = cy
+        K[2, 3] = 0
+        K[3, 1] = 1
+
+        return K
+
     #@Override
     def set_transform(self, x=None, y=None, z=None, roll=None, yaw=None, pitch=None):
         super(Camera, self).set_transform(x ,y ,z ,roll , yaw , pitch )
-        self.C = self.create_cammera_matrix(self.T, self.K)
+        self.C = self.create_cammera_matrix4x4(self.T, self.K)
 
     def project_ortographic(self, vertices):
         homogeneous_vertices = self.C.dot(vertices)
@@ -82,10 +131,11 @@ class Camera(Actor):
         else:
             self.K = self.create_K(self.cam_config)
             self.project = self.project_perspective
-        self.C = self.create_cammera_matrix(self.T, self.K)
+        self.C = self.create_cammera_matrix4x4(self.T, self.K)
 
     #@Override
     def set_active(self):
+        self.is_active = True
         print ("Reached camera. No action for color")
 
     #@Override

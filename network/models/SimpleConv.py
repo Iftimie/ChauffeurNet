@@ -58,7 +58,7 @@ class DrivingDataset(Dataset):
         self.in_res = (72, 96)
         self.mode = mode
         if mode == "read":
-            self.file = h5py.File(hdf5_file,"r")
+            self.file = h5py.File(hdf5_file,"r", driver='core')
             self.dset_data = self.file['data']
             self.dset_target = self.file['labels']
             hist, bin_edges = np.histogram(self.dset_target[...], bins=bins, range=range, density=True)

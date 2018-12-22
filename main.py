@@ -8,8 +8,8 @@ from download_data import check_if_data_exists
 
 def main():
     check_if_data_exists()
-    # worldEditor = WorldEditor("data/world.h5")
-    # worldEditor.run()
+    worldEditor = WorldEditor("data/world.h5")
+    worldEditor.run()
     # recorder = Recorder(event_bag_path="data/recording.h5", world_path="data/world.h5")
     # recorder.run()
     # renderer = Renderer(world_path="data/world.h5", h5_path="data/pytorch_data.h5",

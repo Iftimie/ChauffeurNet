@@ -25,6 +25,7 @@ class Actor:
         self.render_thickness = 5
 
         self.is_active = False
+        self.move_by_mouse = False
 
         pass
 
@@ -109,6 +110,8 @@ class Actor:
         :param mouse: tuple of 2 coordinates, x and y on the screen
         :return: nothing
         """
+        if self.move_by_mouse==True and len(mouse) == 3:
+            self.set_transform(x = mouse[0],y = mouse[1],z = mouse[2])
         pass
 
     def move_actor(self, key):
@@ -143,3 +146,8 @@ class Actor:
         self.vertices_L = np.reshape(vect[s_T_matrix:s_T_matrix+s_points], (4, -1))
         self.vertices_W = self.T.dot(self.vertices_L)
 
+    def toggle_move_by_mouse(self):
+        if self.move_by_mouse == False:
+            self.move_by_mouse = True
+        else:
+            self.move_by_mouse = False
