@@ -48,14 +48,15 @@ class ChauffeurNet(nn.Module):
 
 class DrivingDataset(Dataset):
 
-    def __init__(self, hdf5_file, mode = "read"):
+    def __init__(self, hdf5_file, mode = "read", in_res = (72,96), num_channels = 6):
         """
         Args:
             hdf5_file (string): Path to the hdf5 file with annotations.
         """
         range = (-0.785398, 0.785398)
         bins = 45
-        self.in_res = (72, 96)
+        self.in_res = in_res
+        self.num_channels = 6
         self.mode = mode
         if mode == "read":
             self.file = h5py.File(hdf5_file,"r", driver='core')
@@ -67,9 +68,9 @@ class DrivingDataset(Dataset):
             self.bin_edges = bin_edges
         elif mode == "write":
             self.file = h5py.File(hdf5_file, "w")
-            self.dset_data = self.file.create_dataset("data", (0, 3, self.in_res[0], self.in_res[1]), dtype=np.uint8,
-                                                         maxshape=(None, 3, self.in_res[0], self.in_res[1]),
-                                                         chunks=(1, 3, self.in_res[0], self.in_res[1]))
+            self.dset_data = self.file.create_dataset("data", (0, self.num_channels, self.in_res[0], self.in_res[1]), dtype=np.uint8,
+                                                         maxshape=(None, self.num_channels, self.in_res[0], self.in_res[1]),
+                                                         chunks=(1, self.num_channels, self.in_res[0], self.in_res[1]))
             self.dset_labels = self.file.create_dataset("labels", (0, 1), dtype=np.float32, maxshape=(None, 1),
                                                            chunks=(1, 1))
             self.write_idx = 0
@@ -92,7 +93,7 @@ class DrivingDataset(Dataset):
         if self.mode != "write":
             raise ValueError ("Dataset opened with read mode")
 
-        self.dset_data.resize((self.write_idx + 1, 3, self.in_res[0], self.in_res[1]))
+        self.dset_data.resize((self.write_idx + 1, self.num_channels, self.in_res[0], self.in_res[1]))
         self.dset_labels.resize((self.write_idx + 1, 1))
         self.dset_data[self.write_idx, ...] = images_concatenated
         self.dset_labels[self.write_idx, ...] = np.array([labels])

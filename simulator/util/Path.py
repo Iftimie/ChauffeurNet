@@ -24,7 +24,7 @@ class Path(Actor):
         self.vertices_W = self.T.dot(self.vertices_L)
         self.render_thickness = 40
         self.DRAW_POLYGON = False
-        self.c = (255,0,0)
+        self.c = (180,180,180)
         self.future_positions = 250 # we only want to render the next 200 positions from the current index
 
     def render(self, image, C, path_idx):
@@ -36,7 +36,7 @@ class Path(Actor):
         :return:      image with this object renderd
         """
         if self.vertices_W.shape[1] > 1:
-            selected_for_projection = self.vertices_W[:,path_idx-50:path_idx+self.future_positions]
+            selected_for_projection = self.vertices_W[:,path_idx:path_idx+self.future_positions]
             x, y = C.project(selected_for_projection)
             pts = np.array([x, y]).T
             pts = pts.reshape((-1, 1, 2))

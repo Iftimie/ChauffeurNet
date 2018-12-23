@@ -5,6 +5,7 @@ import cv2
 from scipy.interpolate import interp1d
 from .transform.util import rot_y
 import math
+from simulator.util.transform.util import params_from_tansformation
 
 class Vehicle(Actor):
 
@@ -17,14 +18,18 @@ class Vehicle(Actor):
         play: if playing, the colours and the shape of the future positions will be different
         """
         super().__init__()
+        self.c = (200,200,200)
+
         self.vertices_L = np.array([[-30, 0, -60, 1], #x, y, z   x increases to right, y up, z forward
                                     [-30, 0,  60, 1],
                                     [30, 0,  60, 1],
                                     [30, 0,  -60, 1]]).T
-        self.next_locations = np.zeros((4,15), np.float32)
-        self.next_locations[3,:] = 1
+        self.next_locations_by_steering = np.zeros((4,15), np.float32)
+        self.next_locations_by_steering[3,:] = 1
+        self.past_locations = []
         self.vertices_W = self.T.dot(self.vertices_L)
         self.camera = camera
+        self.displacement_vector = np.array([[0, 0, -200, 1]]).T
 
         #Kinematic network and variables as in:
         #https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/10-Unscented-Kalman-Filter.ipynb
@@ -35,6 +40,8 @@ class Vehicle(Actor):
 
         self.range_angle = (-0.785398, 0.785398)
 
+
+
         if play:
             self.render_radius = 2
             self.render_thickness = -1
@@ -43,16 +50,38 @@ class Vehicle(Actor):
             self.render_thickness = 5
 
         self.is_active = True
+        self.render_next_locations_by_steering = False
 
+        #Options about the past
+        self.render_past_locations = False
+        self.render_past_locations_thickness = 2
+        self.render_past_locations_radius = 2
+        self.num_past_poses = 40
+        self.num_skip_poses = 3
 
+    def render_next_locations_by_steering_func(self, image, C):
+        if self.next_locations_by_steering.shape[1] > 1:
+            x, y = C.project(self.next_locations_by_steering)
+            for i in range(0, len(x)):
+                image = cv2.circle(image, (x[i], y[i]), self.render_radius, (0, 0, 255),self.render_thickness)
+        return image
+
+    def render_past_locations_func(self, image, C):
+        if len(self.past_locations) > 0:
+            array_past_locations = np.array(self.past_locations[::self.num_skip_poses]).T
+            x, y = C.project(array_past_locations)
+            for i in range(0, len(x)):
+                image = cv2.circle(image, (x[i], y[i]), self.render_past_locations_radius, (0, 0, 255), self.render_past_locations_thickness)
+        return image
 
     #@Override
     def render(self, image, C):
-        super(Vehicle, self).render(image, C)
-        if self.next_locations.shape[1] > 1:
-            x, y = C.project(self.next_locations)
-            for i in range(0, len(x)):
-                image = cv2.circle(image, (x[i], y[i]), self.render_radius, (0, 0, 255),self.render_thickness)
+        image = super(Vehicle, self).render(image, C)
+        if self.render_next_locations_by_steering == True:
+            image = self.render_next_locations_by_steering_func(image,C)
+        if self.render_past_locations == True:
+            image = self.render_past_locations_func(image,C)
+
         return image
 
     # @Override
@@ -110,8 +139,19 @@ class Vehicle(Actor):
             m_func = interp1d([min_x, max_x], [self.range_angle[0], self.range_angle[1]])
             self.turn_angle = m_func(x_pos)
 
+    def append_past_location(self, past_location):
+        if len(self.past_locations) > self.num_past_poses:
+            self.past_locations.pop(0)
+        if len(past_location) == 3: # if it is received as a tuple
+            self.past_locations.append([past_location[0],past_location[1],past_location[2],1])
+        elif len(past_location) == 4: # if it is received as a transformation matrix
+            x, y, z, roll, yaw, pitch = params_from_tansformation(past_location) #TODO maybe refactor this to be not depend directly on the outer package
+            self.past_locations.append([x, y, z,1])
+
     def update_parameters(self):
         x, y, z, roll, yaw, pitch = self.get_transform()
+
+        self.append_past_location((x,y,z))
 
         if abs(self.turn_angle) > 0.0001:  # is the car turning?
 
@@ -119,26 +159,25 @@ class Vehicle(Actor):
 
             tmp_z, tmp_x, tmp_yaw = z, x, yaw
             # next location prediction
-            for i in range(self.next_locations.shape[1]):
+            for i in range(self.next_locations_by_steering.shape[1]):
                 tmp_z, tmp_x, tmp_yaw = self.kinematic_model(tmp_z, tmp_x, tmp_yaw, self.delta * 4)
-                self.next_locations[0, i] = tmp_x
-                self.next_locations[2, i] = tmp_z
+                self.next_locations_by_steering[0, i] = tmp_x
+                self.next_locations_by_steering[2, i] = tmp_z
         else:
             z, x = self.linear_model(z, x, yaw, self.delta)
             tmp_z, tmp_x = z, x
             # next location prediction
-            for i in range(self.next_locations.shape[1]):
+            for i in range(self.next_locations_by_steering.shape[1]):
                 tmp_z, tmp_x = self.linear_model(tmp_z, tmp_x, yaw, self.delta * 4)
-                self.next_locations[0, i] = tmp_x
-                self.next_locations[2, i] = tmp_z
+                self.next_locations_by_steering[0, i] = tmp_x
+                self.next_locations_by_steering[2, i] = tmp_z
 
         self.set_transform(x, y, z, roll, yaw, pitch)
 
         x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.camera.get_transform()
-        displacement_vector = np.array([[0, 0, -200, 1]]).T
-        displacement_vector = rot_y(yaw - pi).dot(displacement_vector)
-        x += displacement_vector[0]
-        z += displacement_vector[2]
+        rotated_displacement_vector = rot_y(yaw - pi).dot(self.displacement_vector)
+        x += rotated_displacement_vector[0]
+        z += rotated_displacement_vector[2]
         self.camera.set_transform(x, y_c, z, roll_c, yaw, pitch_c)
 
     def simulate(self, key_pressed, mouse):
