@@ -83,6 +83,11 @@ class Renderer:
         image_vehicle = np.zeros((480, 640, 3), np.uint8)
         image_path = np.zeros((480, 640, 3), np.uint8)
         image_agent_past_poses = np.zeros((480, 640, 3), np.uint8)
+        images_future_poses = []
+        for i in range(int(path.num_future_poses / path.num_skip_poses)):
+            image_future_pose = np.zeros((480, 640, 1), np.uint8)
+            image_future_pose = path.render_future_poses(image_future_pose, vehicle.camera, path_idx + i * path.num_skip_poses)
+            images_future_poses.append(image_future_pose)
 
         for actor in world.actors:
             if type(actor) is Camera: continue
@@ -93,7 +98,7 @@ class Renderer:
         image_agent_past_poses = vehicle.render_past_locations_func(image_agent_past_poses, vehicle.camera)
         # image_lanes = self.vehicle.render(image_lanes, self.camera)
 
-        return {"image_lanes":image_lanes,"image_vehicle": image_vehicle, "image_path": image_path, "image_agent_past_poses":image_agent_past_poses}
+        return {"image_lanes":image_lanes,"image_vehicle": image_vehicle, "image_path": image_path, "image_agent_past_poses":image_agent_past_poses, "images_future_poses":images_future_poses}
 
     @staticmethod
     def prepare_images(images, in_res):
@@ -114,6 +119,12 @@ class Renderer:
         image_agent_past_poses = cv2.cvtColor(image_agent_past_poses , cv2.COLOR_BGR2GRAY)
         image_agent_past_poses = cv2.resize(image_agent_past_poses , (in_res[1], in_res[0]))
 
+        images_future_poses = images["images_future_poses"]
+        for i in range(len(images_future_poses)):
+            future_pose_i = images_future_poses[i]
+            future_pose_i = cv2.resize(future_pose_i, (in_res[1], in_res[0]))
+            images_future_poses[i] = future_pose_i
+
         # for image in images:
         #     image_ = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         #     image_ = cv2.resize(image_, (in_res[1], in_res[0]))
@@ -125,11 +136,14 @@ class Renderer:
         image_concatenated[3, ...] = image_vehicle
         image_concatenated[4, ...] = image_path
         image_concatenated[5, ...] = image_agent_past_poses
+        #TODO add the future pose here
 
         cv2.imshow("image1", image_lanes)
         cv2.imshow("image4", image_vehicle)
         cv2.imshow("image5", image_path)
         cv2.imshow("image6", image_agent_past_poses)
+        for i in range(len(images_future_poses)):
+            cv2.imshow("image_future"+str(i), images_future_poses[i])
         cv2.waitKey(33)
         return image_concatenated
 
@@ -138,7 +152,7 @@ class Renderer:
         if self.overwrite == False:return
         self.pre_simulate()
 
-        for i in range(len(self.all_states)):
+        for i in range(len(self.all_states) - self.path.num_future_poses):
 
             self.vehicle.T = self.all_states[i][0]
             self.vehicle.append_past_location(self.vehicle.T) #TODO should refactor this so that any assignement to T updates every other dependent feature

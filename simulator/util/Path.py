@@ -27,6 +27,10 @@ class Path(Actor):
         self.c = (180,180,180)
         self.future_positions = 250 # we only want to render the next 200 positions from the current index
 
+        self.num_future_poses = 40
+        self.num_skip_poses = 5
+        # TODO do not forget that the delta time must be the same in all settings
+
     def render(self, image, C, path_idx):
         """
         :param image: image on which this actor will be renderd on
@@ -44,5 +48,19 @@ class Path(Actor):
                 image = cv2.fillPoly(image, [pts], color=self.c)
             else:
                 image = cv2.polylines(image, [pts], False, color=self.c,thickness= self.render_thickness)
+        return image
+
+    def render_future_poses(self, image, C, path_idx):
+        """
+        receives a single channel image and put a simple pixel over the location
+        """
+
+        if self.vertices_W.shape[1] > 1:
+            selected_for_projection = self.vertices_W[:,[path_idx]]
+            x, y = C.project(selected_for_projection)
+            for i in range(len(x)):
+                x_i = x[i]
+                y_i = y[i]
+                image[x_i,y_i] = (255)
         return image
 

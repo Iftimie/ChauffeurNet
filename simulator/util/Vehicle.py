@@ -57,7 +57,8 @@ class Vehicle(Actor):
         self.render_past_locations_thickness = 2
         self.render_past_locations_radius = 2
         self.num_past_poses = 40
-        self.num_skip_poses = 3
+        self.num_skip_poses = 5
+        #TODO do not forget that the delta time must be the same in all settings
 
     def render_next_locations_by_steering_func(self, image, C):
         if self.next_locations_by_steering.shape[1] > 1:
