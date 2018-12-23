@@ -15,10 +15,10 @@ as these are tightly coupled
 class FeatureExtractor(nn.Module):
 
     def conv_block(self, in_channels, out_channels):
-        conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3)
+        conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3, padding= 1)
         batc1 = nn.BatchNorm2d(out_channels)
         relu1 = nn.ReLU(inplace=True)
-        conv2 = nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=3)
+        conv2 = nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=3, padding=1)
         batc2 = nn.BatchNorm2d(out_channels)
         relu2 = nn.ReLU(inplace=True)
         pool2 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
@@ -28,7 +28,7 @@ class FeatureExtractor(nn.Module):
     def __init__(self):
         super(FeatureExtractor, self).__init__()
 
-        self.block1 = self.conv_block(3,16)
+        self.block1 = self.conv_block(6,16)
         self.block2 = self.conv_block(16,32)
         self.block3 = self.conv_block(32,64)
 
@@ -40,19 +40,25 @@ class FeatureExtractor(nn.Module):
 
 class Upsampling(nn.Module):
 
-    def conv_block(self, in_channels, out_channels):
-        conv1 = nn.ConvTranspose2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3)
+    def deconv_block(self, in_channels, out_channels):
+        conv1 = nn.ConvTranspose2d(in_channels=in_channels, out_channels=out_channels, kernel_size=4, stride=2, padding=1)
         batc1 = nn.BatchNorm2d(out_channels)
         relu1 = nn.ReLU(inplace=True)
-        block = nn.Sequential(conv1,batc1,relu1)
+        conv2 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3, stride=1,padding=1)
+        #TODO change the parameters in convTranspose2D such thatwe obtain the doubled output after applying convtranspose and conv with padding 1
+        batc2 = nn.BatchNorm2d(out_channels)
+        relu2 = nn.ReLU(inplace=True)
+        block = nn.Sequential(conv1,batc1,relu1,conv2,batc2,relu2)
         return block
 
     def __init__(self):
-        super(FeatureExtractor, self).__init__()
+        super(Upsampling, self).__init__()
 
-        self.block1 = self.conv_block(16,16)
-        self.block2 = self.conv_block(16,16)
-        self.block3 = self.conv_block(16,16)
+        self.block1 = self.deconv_block(16,16)
+        self.block2 = self.deconv_block(16,16)
+        self.block3 = self.deconv_block(16,16)
+
+        return
 
     def forward(self, x):
         x = self.block1(x)
@@ -62,7 +68,9 @@ class Upsampling(nn.Module):
 
 class SteeringPredictor(nn.Module):
 
-    def __init__(self, hidden_size = 64 * 5 * 8):
+    def __init__(self, hidden_size = 64 * 9 * 12):
+        super(SteeringPredictor, self).__init__()
+
         self.hidden_size = hidden_size
         self.drop1 = nn.Dropout(p=0.1, inplace=True)
         self.fc1 = nn.Linear(self.hidden_size, 256)
@@ -77,26 +85,36 @@ class SteeringPredictor(nn.Module):
         x = self.fc2(x)
         return x
 
-class WaypointHeatmap(nn.module):
+class WaypointHeatmap(nn.Module):
 
     def conv_block(self, in_channels, out_channels):
-        conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3)
+        conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3,padding=1)
         batc1 = nn.BatchNorm2d(out_channels)
         relu1 = nn.ReLU(inplace=True)
         block = nn.Sequential(conv1,batc1,relu1)
         return block
 
     def __init__(self):
-        super(FeatureExtractor, self).__init__()
+        super(WaypointHeatmap, self).__init__()
 
         self.upsampling = Upsampling()
         self.conv1 = self.conv_block(16,1)
-        self.activation = nn.Softmax(dim=1) # we want to do a spatial softmax
+        self.activation = nn.Softmax(dim=-1) # we want to do a spatial softmax
 
     def forward(self, x):
         x = self.upsampling(x)
         x = self.conv1(x)
+        x_before = x.data.cpu().numpy()
         x = self.activation(x)
+        x_after = x.data.cpu().numpy()
+        if False:
+            fig, (ax1,ax2) = plt.subplots(1, 2)
+            image_plot1 = ax1.imshow(np.squeeze(x_before[0, 0, ...]))
+            image_plot2 = ax2.imshow(np.squeeze(x_after[0, 0, ...]))
+            plt.colorbar(image_plot1, ax = ax1)
+            plt.colorbar(image_plot2, ax = ax2)
+            plt.show()
+
         return x
 
 
@@ -105,34 +123,35 @@ class AgentRNN(nn.Module):
         Simple RNN as defined in https://pytorch.org/docs/stable/nn.html
         But instead of vectors we use convolutions
     """
-    def __init__(self, horizon = 8):
+    def __init__(self, config):
+        super(AgentRNN, self).__init__()
 
-        self.horizon            = horizon
-        self.wih                = nn.Conv2d(in_channels=64, out_channels=16, kernel_size=3)
-        self.whh                = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3)
+        self.config             = config
+        self.wih                = nn.Conv2d(in_channels=64, out_channels=16, kernel_size=3, padding=1)
+        self.whh                = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, padding=1)
         self.rel                = nn.ReLU(inplace=True)
         self.waypoint_predictor = WaypointHeatmap()
 
     def forward(self, x):
-        h_t = torch.zeros(1, 16, x.size(2), x.size(3), dtype=torch.float32).to(self.device)
+        # TODO initialize x_t0 to be the first waypoint produced by a convolution. x_t0 must not be the raw featuremaps
+        h_t = torch.zeros(1, 16, x.size(2), x.size(3), dtype=torch.float32).to(self.config.device)
         future_waypoints = []
-        for i in range(self.horizon):
+        for i in range(self.config.horizon):
             WihXt    = self.wih(x)
             WhhHt_1  = self.whh(h_t)
             h_t      = self.rel(WihXt + WhhHt_1)
             waypoint = self.waypoint_predictor(h_t)
+            x        = waypoint #use it as input for the next time step
             future_waypoints.append(waypoint)
-
-
 
 class ChauffeurNet(nn.Module):
 
-    def __init__(self):
+    def __init__(self, config):
         super(ChauffeurNet, self).__init__()
 
         self.feature_extractor = FeatureExtractor()
         self.steering_predictor = SteeringPredictor()
-        self.agent_rnn = AgentRNN()
+        self.agent_rnn = AgentRNN(config)
 
     def forward(self, x):
         features = self.feature_extractor(x)
@@ -201,23 +220,25 @@ class DrivingDataset(Dataset):
                     centred_row = row - y_i
                     future_poses[i, 0, row, col] = exp(-((centred_col ** 2 + centred_row ** 2)) / (2 * sigma ** 2))
 
-        if True:
-            fig, (ax1) = plt.subplots(1, 1)
-            image_plot1 = ax1.imshow(np.squeeze(future_poses[i, 0, ...]))
-            plt.colorbar(image_plot1, ax = ax1)
-            plt.show()
+        # if True:
+        #     fig, (ax1) = plt.subplots(1, 1)
+        #     image_plot1 = ax1.imshow(np.squeeze(future_poses[i, 0, ...]))
+        #     plt.colorbar(image_plot1, ax = ax1)
+        #     plt.show()
+        return future_poses
 
     def __getitem__(self, idx):
         if self.mode != "read":
             raise ValueError ("Dataset opened with write mode")
         data = self.dset_data[idx,...].astype(np.float32) / 255.0 - 0.5
-        target = self.dset_target[idx,EnumIndices.turn_angle_start_idx]
+        target = self.dset_target[idx,[EnumIndices.turn_angle_start_idx]]
         target_bin = max(np.array([0]), min(np.digitize(target, self.bin_edges) - 1, np.array([len(self.weighting_histogram) -1])))
         #DONT FORGET TO ADD [] when indexing...   [len(self.weighting_histogram) -1]    tensors need the same shape
         weight = np.array(self.weighting_histogram[target_bin])
 
         future_penalty_maps = self.future_penalty_map(self.dset_target[idx,EnumIndices.future_points_start_idx:EnumIndices.end_idx])
 
+        # sample = {'data': data, 'target': target, 'weight':weight, "future_penalty_maps": future_penalty_maps}
         sample = {'data': data, 'target': target, 'weight':weight}
         return sample
 
