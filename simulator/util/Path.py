@@ -2,6 +2,7 @@ from .Actor import Actor
 import numpy as np
 from .transform.util import params_from_tansformation
 import cv2
+import math
 
 class Path(Actor):
 
@@ -53,14 +54,23 @@ class Path(Actor):
     def render_future_poses(self, image, C, path_idx):
         """
         receives a single channel image and put a simple pixel over the location
+
+        it creates a 2D gaussian around the future point as in cornernet
+        https://arxiv.org/pdf/1808.01244.pdf
         """
 
+        radius = 15
+        sigma = 0.3333 * radius
         if self.vertices_W.shape[1] > 1:
             selected_for_projection = self.vertices_W[:,[path_idx]]
             x, y = C.project(selected_for_projection)
             for i in range(len(x)):
                 x_i = x[i]
                 y_i = y[i]
-                image[x_i,y_i] = (255)
+                for col in range(x_i-radius,x_i+radius):
+                    for row in range(y_i-radius,y_i+radius):
+                        centred_col = col - x_i
+                        centred_row = row - y_i
+                        image[row, col] = math.exp(-(centred_col**2+centred_row**2)/(2*sigma**2))
         return image
 

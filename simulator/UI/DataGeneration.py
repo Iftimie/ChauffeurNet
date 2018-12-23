@@ -10,6 +10,7 @@ import atexit
 from simulator.UI.GUI import EventBag
 from network.models.SimpleConv import DrivingDataset
 import pickle
+import matplotlib.pyplot as plt
 
 class Renderer:
 
@@ -85,7 +86,7 @@ class Renderer:
         image_agent_past_poses = np.zeros((480, 640, 3), np.uint8)
         images_future_poses = []
         for i in range(int(path.num_future_poses / path.num_skip_poses)):
-            image_future_pose = np.zeros((480, 640, 1), np.uint8)
+            image_future_pose = np.zeros((480, 640, 1), np.float32)
             image_future_pose = path.render_future_poses(image_future_pose, vehicle.camera, path_idx + i * path.num_skip_poses)
             images_future_poses.append(image_future_pose)
 
@@ -122,6 +123,10 @@ class Renderer:
         images_future_poses = images["images_future_poses"]
         for i in range(len(images_future_poses)):
             future_pose_i = images_future_poses[i]
+            plt.figure()
+            image_plot = plt.imshow(np.squeeze(future_pose_i))
+            plt.colorbar(image_plot)
+            plt.show()
             future_pose_i = cv2.resize(future_pose_i, (in_res[1], in_res[0]))
             images_future_poses[i] = future_pose_i
 
@@ -187,7 +192,7 @@ if __name__ =="__main__":
                          h5_path="../../data/pytorch_data.h5",
                          event_bag_path="../../data/recording.h5",
                          overwrite=True,
-                         do_presimulate=True)
+                         do_presimulate=False)
     # DONT FORGET TO CHANGE OVERWRITE
     renderer.render()
     renderer.visualize()
