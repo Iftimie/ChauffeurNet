@@ -89,5 +89,6 @@ class World(Actor):
             class_ = getattr(module_imported, class_name)
             for i in range(file[class_name].shape[0]):
                 instance = class_()
+
                 instance.from_h5py(file[class_name][i])
                 self.actors.append(instance)

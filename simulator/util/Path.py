@@ -3,6 +3,7 @@ import numpy as np
 from .transform.util import params_from_tansformation
 import cv2
 import math
+from math import *
 
 class Path(Actor):
 
@@ -48,7 +49,8 @@ class Path(Actor):
             if self.DRAW_POLYGON:
                 image = cv2.fillPoly(image, [pts], color=self.c)
             else:
-                image = cv2.polylines(image, [pts], False, color=self.c,thickness= self.render_thickness)
+                thick = int(ceil(self.render_thickness / self.ratio))
+                image = cv2.polylines(image, [pts], False, color=self.c,thickness= thick)
         return image
 
     def render_future_poses(self, image, C, path_idx):
@@ -59,7 +61,9 @@ class Path(Actor):
         https://arxiv.org/pdf/1808.01244.pdf
         """
 
-        radius = 15
+        #TODO plotting should be done on the resized image because if I do resize it after I set the penalties,the maximum penalty won't be anymore 1 but someting less than 1
+
+        radius = int(ceil(20/self.ratio))
         sigma = 0.3333 * radius
         if self.vertices_W.shape[1] > 1:
             selected_for_projection = self.vertices_W[:,[path_idx]]
@@ -71,6 +75,6 @@ class Path(Actor):
                     for row in range(y_i-radius,y_i+radius):
                         centred_col = col - x_i
                         centred_row = row - y_i
-                        image[row, col] = math.exp(-(centred_col**2+centred_row**2)/(2*sigma**2))
+                        image[row, col] = math.exp(-((centred_col**2+centred_row**2))/(2*sigma**2))
         return image
 

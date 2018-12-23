@@ -19,8 +19,13 @@ class Renderer:
         if not os.path.exists(self.world.save_path):
             raise ("No world available")
         self.world.load_world()
+
+        self.in_res = (72, 96)
+
         self.camera = self.world.get_camera_from_actors()
         self.camera.set_transform(y = -1200)
+        self.camera.create_internal_cam_matrix(in_res = self.in_res)
+
         self.vehicle = Vehicle(self.camera, play =False)
         self.vehicle.set_transform(x = 100)
         self.world.actors.append(self.vehicle)
@@ -29,7 +34,6 @@ class Renderer:
         self.event_bag_path = event_bag_path
         self.event_bag = EventBag(self.event_bag_path, record=False)
 
-        self.in_res = (72*3, 96*3)
 
 
         self.all_states = []
@@ -79,14 +83,14 @@ class Renderer:
         self.path = Path(self.all_states)
 
     @staticmethod
-    def render_on_separate_planes(world, vehicle, path, path_idx):
-        image_lanes = np.zeros((480, 640, 3), np.uint8)
-        image_vehicle = np.zeros((480, 640, 3), np.uint8)
-        image_path = np.zeros((480, 640, 3), np.uint8)
-        image_agent_past_poses = np.zeros((480, 640, 3), np.uint8)
+    def render_on_separate_planes(world, vehicle, path, path_idx, in_res):
+        image_lanes = np.zeros((*in_res, 3), np.uint8)
+        image_vehicle = np.zeros((*in_res, 3), np.uint8)
+        image_path = np.zeros((*in_res, 3), np.uint8)
+        image_agent_past_poses = np.zeros((*in_res, 3), np.uint8)
         images_future_poses = []
         for i in range(int(path.num_future_poses / path.num_skip_poses)):
-            image_future_pose = np.zeros((480, 640, 1), np.float32)
+            image_future_pose = np.zeros((*in_res, 1), np.float32)
             image_future_pose = path.render_future_poses(image_future_pose, vehicle.camera, path_idx + i * path.num_skip_poses)
             images_future_poses.append(image_future_pose)
 
@@ -106,34 +110,35 @@ class Renderer:
         gray_images_resized = []
 
         image_lanes = images["image_lanes"]
-        image_lanes = cv2.resize(image_lanes, (in_res[1], in_res[0]))
+        # image_lanes = cv2.resize(image_lanes, (in_res[1], in_res[0]))
 
         image_vehicle = images["image_vehicle"]
         image_vehicle = cv2.cvtColor(image_vehicle, cv2.COLOR_BGR2GRAY)
-        image_vehicle = cv2.resize(image_vehicle, (in_res[1], in_res[0]))
+        # image_vehicle = cv2.resize(image_vehicle, (in_res[1], in_res[0]))
 
         image_path = images["image_path"]
         image_path = cv2.cvtColor(image_path, cv2.COLOR_BGR2GRAY)
-        image_path = cv2.resize(image_path, (in_res[1], in_res[0]))
+        # image_path = cv2.resize(image_path, (in_res[1], in_res[0]))
 
         image_agent_past_poses = images["image_agent_past_poses"]
         image_agent_past_poses = cv2.cvtColor(image_agent_past_poses , cv2.COLOR_BGR2GRAY)
-        image_agent_past_poses = cv2.resize(image_agent_past_poses , (in_res[1], in_res[0]))
+        # image_agent_past_poses = cv2.resize(image_agent_past_poses , (in_res[1], in_res[0]))
 
         images_future_poses = images["images_future_poses"]
         for i in range(len(images_future_poses)):
             future_pose_i = images_future_poses[i]
-            plt.figure()
-            image_plot = plt.imshow(np.squeeze(future_pose_i))
-            plt.colorbar(image_plot)
-            plt.show()
-            future_pose_i = cv2.resize(future_pose_i, (in_res[1], in_res[0]))
-            images_future_poses[i] = future_pose_i
+            # future_pose_i_resized = cv2.resize(future_pose_i, (in_res[1], in_res[0]))
+            future_pose_i_resized = future_pose_i
+            images_future_poses[i] = future_pose_i_resized
 
-        # for image in images:
-        #     image_ = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        #     image_ = cv2.resize(image_, (in_res[1], in_res[0]))
-        #     gray_images_resized.append(image_)
+            fig, (ax1, ax2) = plt.subplots(1, 2)
+            image_plot1 = ax1.imshow(np.squeeze(future_pose_i))
+            image_plot2 = ax2.imshow(np.squeeze(future_pose_i_resized))
+            plt.colorbar(image_plot1, ax = ax1)
+            plt.colorbar(image_plot2, ax = ax2)
+            plt.show()
+
+
         image_concatenated = np.empty((6, in_res[0], in_res[1]), np.uint8)
         image_concatenated[0, ...] = image_lanes[...,0]
         image_concatenated[1, ...] = image_lanes[...,1]
@@ -147,8 +152,8 @@ class Renderer:
         cv2.imshow("image4", image_vehicle)
         cv2.imshow("image5", image_path)
         cv2.imshow("image6", image_agent_past_poses)
-        for i in range(len(images_future_poses)):
-            cv2.imshow("image_future"+str(i), images_future_poses[i])
+        # for i in range(len(images_future_poses)):
+        #     cv2.imshow("image_future"+str(i), images_future_poses[i])
         cv2.waitKey(33)
         return image_concatenated
 
@@ -166,7 +171,7 @@ class Renderer:
             self.vehicle.vertices_W = self.all_states[i][3]
             self.vehicle.turn_angle = self.all_states[i][4]
 
-            image_planes = Renderer.render_on_separate_planes(self.world,self.vehicle, self.path, i)
+            image_planes = Renderer.render_on_separate_planes(self.world,self.vehicle, self.path, i, self.in_res)
             images_concatenated = Renderer.prepare_images(image_planes, self.in_res)
             self.dataset.append(images_concatenated,self.vehicle.turn_angle)
 
@@ -192,7 +197,7 @@ if __name__ =="__main__":
                          h5_path="../../data/pytorch_data.h5",
                          event_bag_path="../../data/recording.h5",
                          overwrite=True,
-                         do_presimulate=False)
+                         do_presimulate=True)
     # DONT FORGET TO CHANGE OVERWRITE
     renderer.render()
     renderer.visualize()

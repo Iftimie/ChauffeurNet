@@ -1,7 +1,7 @@
 import numpy as np
 from .transform.util import transformation_matrix, params_from_tansformation
 import cv2
-from math import radians
+from math import *
 
 class Actor:
 
@@ -22,6 +22,7 @@ class Actor:
         self.vertices_W = self.T.dot(self.vertices_L)
 
         self.DRAW_POLYGON = True
+        self.ratio = 6.6666666666  #TODO in case we do not render at the full size. if normal rendering at VGA size, then ratio is 1, we don;t need to downscale anything
         self.render_thickness = 5
 
         self.is_active = False
@@ -42,7 +43,8 @@ class Actor:
             if self.DRAW_POLYGON:
                 image = cv2.fillPoly(image, [pts], color=self.c)
             else:
-                image = cv2.polylines(image, [pts], False, color=self.c,thickness= self.render_thickness)
+                thick = int(ceil(self.render_thickness / self.ratio))
+                image = cv2.polylines(image, [pts], False, color=self.c,thickness= thick)
         return image
 
     def set_transform(self, x=None, y=None, z=None, roll=None, yaw=None, pitch=None):

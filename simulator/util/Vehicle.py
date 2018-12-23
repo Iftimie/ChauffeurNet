@@ -64,7 +64,9 @@ class Vehicle(Actor):
         if self.next_locations_by_steering.shape[1] > 1:
             x, y = C.project(self.next_locations_by_steering)
             for i in range(0, len(x)):
-                image = cv2.circle(image, (x[i], y[i]), self.render_radius, (0, 0, 255),self.render_thickness)
+                thick = int(ceil(self.render_thickness / self.ratio))
+                radius = int(ceil(self.render_radius / self.ratio))
+                image = cv2.circle(image, (x[i], y[i]), radius , (0, 0, 255),thick)
         return image
 
     def render_past_locations_func(self, image, C):
@@ -72,7 +74,9 @@ class Vehicle(Actor):
             array_past_locations = np.array(self.past_locations[::self.num_skip_poses]).T
             x, y = C.project(array_past_locations)
             for i in range(0, len(x)):
-                image = cv2.circle(image, (x[i], y[i]), self.render_past_locations_radius, (0, 0, 255), self.render_past_locations_thickness)
+                thick = int(ceil(self.render_past_locations_thickness / self.ratio))
+                radius = int(self.render_past_locations_radius / self.ratio)
+                image = cv2.circle(image, (x[i], y[i]), radius, (0, 0, 255),thick )
         return image
 
     #@Override
