@@ -9,6 +9,7 @@ from simulator.util.Path import Path
 import atexit
 from simulator.UI.GUI import EventBag
 from network.models.SimpleConv import DrivingDataset
+import pickle
 
 class Renderer:
 
@@ -59,12 +60,17 @@ class Renderer:
         self.camera.set_transform(*cam_params)
 
     def pre_simulate(self):
-        for i in range(len(self.event_bag)):
-            key, x, y = self.event_bag.next_event()
-            self.vehicle.simulate(key, (x,y))
+        if os.path.exists("../../data/tmp_all_states.pkl"):
+            print ("Loading cached all states")
+            self.all_states = pickle.load(open("../../data/tmp_all_states.pkl","rb"))
+        else:
+            print ("Creating all states")
+            for i in range(len(self.event_bag)):
+                key, x, y = self.event_bag.next_event()
+                self.vehicle.simulate(key, (x,y))
 
-            self.all_states.append([self.vehicle.T.copy(), self.camera.C.copy(), self.vehicle.next_locations.copy(), self.vehicle.vertices_W.copy(), self.vehicle.turn_angle])
-
+                self.all_states.append([self.vehicle.T.copy(), self.camera.C.copy(), self.vehicle.next_locations.copy(), self.vehicle.vertices_W.copy(), self.vehicle.turn_angle])
+            pickle.dump(self.all_states,open("../../data/tmp_all_states.pkl","wb"))
         self.event_bag.reset()
         self.path = Path(self.all_states)
 
@@ -103,6 +109,7 @@ class Renderer:
         return image_concatenated
 
     def render(self):
+
         if self.overwrite == False:return
         self.pre_simulate()
 
@@ -139,7 +146,7 @@ if __name__ =="__main__":
     renderer = Renderer( world_path= "../../data/world.h5",
                          h5_path="../../data/pytorch_data.h5",
                          event_bag_path="../../data/recording.h5",
-                         overwrite=False)
+                         overwrite=True)
     # DONT FORGET TO CHANGE OVERWRITE
     renderer.render()
     renderer.visualize()

@@ -4,6 +4,7 @@ from  math import *
 import cv2
 from scipy.interpolate import interp1d
 from .transform.util import rot_y
+import math
 
 class Vehicle(Actor):
 
@@ -142,3 +143,23 @@ class Vehicle(Actor):
         x +=displacement_vector[0]
         z +=displacement_vector[2]
         self.camera.set_transform(x, y_c, z, roll_c, yaw, pitch_c)
+
+    def simulate_given_waypoint(self, x,z,yaw):
+        """
+        This method should not modify the speed, it will update the position and the orientation, given the desired location and orientation
+        """
+        x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.get_transform()
+
+        dx,dz = x-x_c, z-z_c
+        mag = sqrt(dx**2 + dz**2)
+        if self.speed == 0:return
+        step = mag / self.speed
+        x_n = x_c + dx/step
+        z_n = z_c + dz/step
+        dyaw = yaw - yaw_c
+
+        self.turn_angle = math.atan(dyaw * self.wheel_base/self.speed)
+        yaw_n = yaw_c + dyaw
+
+        self.set_transform(x=x_n,z=z_n,yaw=yaw_n)
+        pass
