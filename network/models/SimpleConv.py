@@ -12,7 +12,7 @@ I define here the model, the dataset format and the training procedure for this 
 as these are tightly coupled
 """
 
-class ChauffeurNet(nn.Module):
+class FeatureExtractor(nn.Module):
 
     def conv_block(self, in_channels, out_channels):
         conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3)
@@ -26,27 +26,121 @@ class ChauffeurNet(nn.Module):
         return block
 
     def __init__(self):
-        super(ChauffeurNet, self).__init__()
+        super(FeatureExtractor, self).__init__()
 
         self.block1 = self.conv_block(3,16)
         self.block2 = self.conv_block(16,32)
         self.block3 = self.conv_block(32,64)
 
-        self.drop1 = nn.Dropout(p=0.1, inplace=True)
-        self.fc1 = nn.Linear(64*5*8, 256)
-        self.fc1_relu = nn.ReLU(inplace=True)
-        self.fc2 = nn.Linear(256, 1)
+    def forward(self, x):
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        return x
+
+class Upsampling(nn.Module):
+
+    def conv_block(self, in_channels, out_channels):
+        conv1 = nn.ConvTranspose2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3)
+        batc1 = nn.BatchNorm2d(out_channels)
+        relu1 = nn.ReLU(inplace=True)
+        block = nn.Sequential(conv1,batc1,relu1)
+        return block
+
+    def __init__(self):
+        super(FeatureExtractor, self).__init__()
+
+        self.block1 = self.conv_block(16,16)
+        self.block2 = self.conv_block(16,16)
+        self.block3 = self.conv_block(16,16)
 
     def forward(self, x):
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
-        x = x.view(-1, 64*5*8)
+        return x
+
+class SteeringPredictor(nn.Module):
+
+    def __init__(self, hidden_size = 64 * 5 * 8):
+        self.hidden_size = hidden_size
+        self.drop1 = nn.Dropout(p=0.1, inplace=True)
+        self.fc1 = nn.Linear(self.hidden_size, 256)
+        self.fc1_relu = nn.ReLU(inplace=True)
+        self.fc2 = nn.Linear(256, 1)
+
+    def forward(self, x):
+        x = x.view(-1, self.hidden_size)
         x = self.drop1(x)
         x = self.fc1(x)
         x = self.fc1_relu(x)
         x = self.fc2(x)
         return x
+
+class WaypointHeatmap(nn.module):
+
+    def conv_block(self, in_channels, out_channels):
+        conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3)
+        batc1 = nn.BatchNorm2d(out_channels)
+        relu1 = nn.ReLU(inplace=True)
+        block = nn.Sequential(conv1,batc1,relu1)
+        return block
+
+    def __init__(self):
+        super(FeatureExtractor, self).__init__()
+
+        self.upsampling = Upsampling()
+        self.conv1 = self.conv_block(16,1)
+        self.activation = nn.Softmax(dim=1) # we want to do a spatial softmax
+
+    def forward(self, x):
+        x = self.upsampling(x)
+        x = self.conv1(x)
+        x = self.activation(x)
+        return x
+
+
+class AgentRNN(nn.Module):
+    """
+        Simple RNN as defined in https://pytorch.org/docs/stable/nn.html
+        But instead of vectors we use convolutions
+    """
+    def __init__(self, horizon = 8):
+
+        self.horizon            = horizon
+        self.wih                = nn.Conv2d(in_channels=64, out_channels=16, kernel_size=3)
+        self.whh                = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3)
+        self.rel                = nn.ReLU(inplace=True)
+        self.waypoint_predictor = WaypointHeatmap()
+
+    def forward(self, x):
+        h_t = torch.zeros(1, 16, x.size(2), x.size(3), dtype=torch.float32).to(self.device)
+        future_waypoints = []
+        for i in range(self.horizon):
+            WihXt    = self.wih(x)
+            WhhHt_1  = self.whh(h_t)
+            h_t      = self.rel(WihXt + WhhHt_1)
+            waypoint = self.waypoint_predictor(h_t)
+            future_waypoints.append(waypoint)
+
+
+
+class ChauffeurNet(nn.Module):
+
+    def __init__(self):
+        super(ChauffeurNet, self).__init__()
+
+        self.feature_extractor = FeatureExtractor()
+        self.steering_predictor = SteeringPredictor()
+        self.agent_rnn = AgentRNN()
+
+    def forward(self, x):
+        features = self.feature_extractor(x)
+        steering = self.steering_predictor(features)
+        waypoints = self.agent_rnn(features)
+
+        return steering
+
 
 class EnumIndices:
     turn_angle_start_idx = 0
