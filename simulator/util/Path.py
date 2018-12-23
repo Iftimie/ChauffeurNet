@@ -53,6 +53,7 @@ class Path(Actor):
                 image = cv2.polylines(image, [pts], False, color=self.c,thickness= thick)
         return image
 
+    #Deprecated. It is very very storage heavy to render so many float32 planes
     def render_future_poses(self, image, C, path_idx):
         """
         receives a single channel image and put a simple pixel over the location
@@ -77,4 +78,16 @@ class Path(Actor):
                         centred_row = row - y_i
                         image[row, col] = math.exp(-((centred_col**2+centred_row**2))/(2*sigma**2))
         return image
+
+    # Deprecated. It is very very storage heavy to render so many float32 planes
+    def project_future_poses(self, C, path_idx):
+        """
+        """
+
+        if self.vertices_W.shape[1] > 1:
+            selected_for_projection = self.vertices_W[:, [path_idx]]
+            x, y = C.project(selected_for_projection)
+            if len(x) !=1:
+                raise ValueError("too many points. there is a problem")
+            return [x,y]
 

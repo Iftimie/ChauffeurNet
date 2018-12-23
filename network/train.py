@@ -56,7 +56,7 @@ class ConfigSimpleConv(Config):
                                                shuffle=self.shuffle)
         self.model = ChauffeurNet().to(self.device)
 
-        self.model.load_state_dict(torch.load("../experiments/2018-12-21_21-38-57_whatever/checkpoints/ChauffeurNet_99_120.pt"))
+        # self.model.load_state_dict(torch.load("../experiments/2018-12-21_21-38-57_whatever/checkpoints/ChauffeurNet_99_120.pt"))
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.training_procedure = train_simple_conv

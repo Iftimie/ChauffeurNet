@@ -14,7 +14,9 @@ import matplotlib.pyplot as plt
 
 class Renderer:
 
-    def __init__(self, world_path="", h5_path="", event_bag_path = "", overwrite = False, do_presimulate = False):
+    def __init__(self, world_path="", h5_path="", event_bag_path = "", overwrite = False, do_presimulate = False, debug= False):
+        self.debug = debug
+
         self.world = World(world_path = world_path)
         if not os.path.exists(self.world.save_path):
             raise ("No world available")
@@ -34,10 +36,7 @@ class Renderer:
         self.event_bag_path = event_bag_path
         self.event_bag = EventBag(self.event_bag_path, record=False)
 
-
-
         self.all_states = []
-
 
         atexit.register(self.cleanup)
 
@@ -83,16 +82,14 @@ class Renderer:
         self.path = Path(self.all_states)
 
     @staticmethod
-    def render_on_separate_planes(world, vehicle, path, path_idx, in_res):
+    def render_inputs_on_separate_planes(world, vehicle, path, path_idx, in_res):
         image_lanes = np.zeros((*in_res, 3), np.uint8)
         image_vehicle = np.zeros((*in_res, 3), np.uint8)
         image_path = np.zeros((*in_res, 3), np.uint8)
         image_agent_past_poses = np.zeros((*in_res, 3), np.uint8)
-        images_future_poses = []
-        for i in range(int(path.num_future_poses / path.num_skip_poses)):
-            image_future_pose = np.zeros((*in_res, 1), np.float32)
-            image_future_pose = path.render_future_poses(image_future_pose, vehicle.camera, path_idx + i * path.num_skip_poses)
-            images_future_poses.append(image_future_pose)
+
+
+
 
         for actor in world.actors:
             if type(actor) is Camera: continue
@@ -103,40 +100,26 @@ class Renderer:
         image_agent_past_poses = vehicle.render_past_locations_func(image_agent_past_poses, vehicle.camera)
         # image_lanes = self.vehicle.render(image_lanes, self.camera)
 
-        return {"image_lanes":image_lanes,"image_vehicle": image_vehicle, "image_path": image_path, "image_agent_past_poses":image_agent_past_poses, "images_future_poses":images_future_poses}
+        input_planes = {"image_lanes":image_lanes,
+                         "image_vehicle": image_vehicle,
+                         "image_path": image_path,
+                         "image_agent_past_poses":image_agent_past_poses}
+        return input_planes
 
     @staticmethod
-    def prepare_images(images, in_res):
-        gray_images_resized = []
+    def prepare_images(images, in_res, debug):
 
         image_lanes = images["image_lanes"]
-        # image_lanes = cv2.resize(image_lanes, (in_res[1], in_res[0]))
 
         image_vehicle = images["image_vehicle"]
         image_vehicle = cv2.cvtColor(image_vehicle, cv2.COLOR_BGR2GRAY)
-        # image_vehicle = cv2.resize(image_vehicle, (in_res[1], in_res[0]))
 
         image_path = images["image_path"]
         image_path = cv2.cvtColor(image_path, cv2.COLOR_BGR2GRAY)
-        # image_path = cv2.resize(image_path, (in_res[1], in_res[0]))
 
         image_agent_past_poses = images["image_agent_past_poses"]
         image_agent_past_poses = cv2.cvtColor(image_agent_past_poses , cv2.COLOR_BGR2GRAY)
-        # image_agent_past_poses = cv2.resize(image_agent_past_poses , (in_res[1], in_res[0]))
 
-        images_future_poses = images["images_future_poses"]
-        for i in range(len(images_future_poses)):
-            future_pose_i = images_future_poses[i]
-            # future_pose_i_resized = cv2.resize(future_pose_i, (in_res[1], in_res[0]))
-            future_pose_i_resized = future_pose_i
-            images_future_poses[i] = future_pose_i_resized
-
-            fig, (ax1, ax2) = plt.subplots(1, 2)
-            image_plot1 = ax1.imshow(np.squeeze(future_pose_i))
-            image_plot2 = ax2.imshow(np.squeeze(future_pose_i_resized))
-            plt.colorbar(image_plot1, ax = ax1)
-            plt.colorbar(image_plot2, ax = ax2)
-            plt.show()
 
 
         image_concatenated = np.empty((6, in_res[0], in_res[1]), np.uint8)
@@ -148,14 +131,22 @@ class Renderer:
         image_concatenated[5, ...] = image_agent_past_poses
         #TODO add the future pose here
 
-        cv2.imshow("image1", image_lanes)
-        cv2.imshow("image4", image_vehicle)
-        cv2.imshow("image5", image_path)
-        cv2.imshow("image6", image_agent_past_poses)
-        # for i in range(len(images_future_poses)):
-        #     cv2.imshow("image_future"+str(i), images_future_poses[i])
-        cv2.waitKey(33)
+        if debug:
+            cv2.imshow("image1", image_lanes)
+            cv2.imshow("image4", image_vehicle)
+            cv2.imshow("image5", image_path)
+            cv2.imshow("image6", image_agent_past_poses)
+            cv2.waitKey(33)
         return image_concatenated
+
+    def prepare_labels(self, path, path_idx):
+
+        future_pose_states = {"points": [], "current_turn_angle":self.vehicle.turn_angle}
+        # TODO I also have to add to the future pose states the angle prediction, or head orientation predicition
+        for i in range(int(path.num_future_poses / path.num_skip_poses)):
+            point = path.project_future_poses(self.vehicle.camera, path_idx + i * path.num_skip_poses)
+            future_pose_states["points"].append(point)
+        return future_pose_states
 
     def render(self):
 
@@ -171,9 +162,11 @@ class Renderer:
             self.vehicle.vertices_W = self.all_states[i][3]
             self.vehicle.turn_angle = self.all_states[i][4]
 
-            image_planes = Renderer.render_on_separate_planes(self.world,self.vehicle, self.path, i, self.in_res)
-            images_concatenated = Renderer.prepare_images(image_planes, self.in_res)
-            self.dataset.append(images_concatenated,self.vehicle.turn_angle)
+
+            input_planes = Renderer.render_inputs_on_separate_planes(self.world,self.vehicle, self.path, i, self.in_res)
+            input_planes_concatenated = Renderer.prepare_images(input_planes, self.in_res, self.debug)
+            labels = self.prepare_labels(self.path, i)
+            self.dataset.append(input_planes_concatenated,labels)
 
         print ("Rendering Done")
 
@@ -197,9 +190,10 @@ if __name__ =="__main__":
                          h5_path="../../data/pytorch_data.h5",
                          event_bag_path="../../data/recording.h5",
                          overwrite=True,
-                         do_presimulate=True)
+                         do_presimulate=True,
+                         debug=False)
     # DONT FORGET TO CHANGE OVERWRITE
     renderer.render()
-    renderer.visualize()
+    # renderer.visualize()
 
 

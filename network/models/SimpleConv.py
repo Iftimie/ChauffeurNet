@@ -4,6 +4,8 @@ import h5py
 import numpy as np
 from torch.utils.data import Dataset
 import os
+from math import *
+import matplotlib.pyplot as plt
 
 """
 I define here the model, the dataset format and the training procedure for this specific model,
@@ -46,6 +48,11 @@ class ChauffeurNet(nn.Module):
         x = self.fc2(x)
         return x
 
+class EnumIndices:
+    turn_angle_start_idx = 0
+    future_points_start_idx = 1
+    end_idx = int(future_points_start_idx + 2 * (40 / 5)) #LOOK IN Path class to know how many points there are
+
 class DrivingDataset(Dataset):
 
     def __init__(self, hdf5_file, mode = "read", in_res = (72,96), num_channels = 6):
@@ -58,11 +65,15 @@ class DrivingDataset(Dataset):
         self.in_res = in_res
         self.num_channels = 6
         self.mode = mode
+
+        self.ratio = 6.66666666
+
         if mode == "read":
             self.file = h5py.File(hdf5_file,"r", driver='core')
             self.dset_data = self.file['data']
             self.dset_target = self.file['labels']
-            hist, bin_edges = np.histogram(self.dset_target[...], bins=bins, range=range, density=True)
+
+            hist, bin_edges = np.histogram(self.dset_target[:,EnumIndices.turn_angle_start_idx], bins=bins, range=range, density=True)
             hist = hist / np.sum(hist)
             self.weighting_histogram = (1 / (hist + 0.01)).astype(np.float32)
             self.bin_edges = bin_edges
@@ -71,32 +82,64 @@ class DrivingDataset(Dataset):
             self.dset_data = self.file.create_dataset("data", (0, self.num_channels, self.in_res[0], self.in_res[1]), dtype=np.uint8,
                                                          maxshape=(None, self.num_channels, self.in_res[0], self.in_res[1]),
                                                          chunks=(1, self.num_channels, self.in_res[0], self.in_res[1]))
-            self.dset_labels = self.file.create_dataset("labels", (0, 1), dtype=np.float32, maxshape=(None, 1),
-                                                           chunks=(1, 1))
+            self.dset_labels = self.file.create_dataset("labels", (0, EnumIndices.end_idx), dtype=np.float32, maxshape=(None,  EnumIndices.end_idx),
+                                                           chunks=(1, EnumIndices.end_idx))
             self.write_idx = 0
 
     def __len__(self):
         return self.dset_data.shape[0]
 
+    def future_penalty_map(self, points):
+
+        radius = int(ceil(20 / self.ratio))
+        sigma = 0.3333 * radius
+
+
+        points = np.reshape(points,(-1,2))
+        num_points = points.shape[0]
+        future_poses = np.zeros((num_points, 1, self.in_res[0], self.in_res[1]))
+
+        for i in range(num_points):
+            x_i,y_i = int(points[i,0]), int(points[i,1])
+            for col in range(x_i - radius, x_i + radius):
+                for row in range(y_i - radius, y_i + radius):
+                    centred_col = col - x_i
+                    centred_row = row - y_i
+                    future_poses[i, 0, row, col] = exp(-((centred_col ** 2 + centred_row ** 2)) / (2 * sigma ** 2))
+
+        if True:
+            fig, (ax1) = plt.subplots(1, 1)
+            image_plot1 = ax1.imshow(np.squeeze(future_poses[i, 0, ...]))
+            plt.colorbar(image_plot1, ax = ax1)
+            plt.show()
+
     def __getitem__(self, idx):
         if self.mode != "read":
             raise ValueError ("Dataset opened with write mode")
         data = self.dset_data[idx,...].astype(np.float32) / 255.0 - 0.5
-        target = self.dset_target[idx,...]
+        target = self.dset_target[idx,EnumIndices.turn_angle_start_idx]
         target_bin = max(np.array([0]), min(np.digitize(target, self.bin_edges) - 1, np.array([len(self.weighting_histogram) -1])))
         #DONT FORGET TO ADD [] when indexing...   [len(self.weighting_histogram) -1]    tensors need the same shape
         weight = np.array(self.weighting_histogram[target_bin])
+
+        future_penalty_maps = self.future_penalty_map(self.dset_target[idx,EnumIndices.future_points_start_idx:EnumIndices.end_idx])
+
         sample = {'data': data, 'target': target, 'weight':weight}
         return sample
 
-    def append(self, images_concatenated, labels=()):
+    def append(self, images_concatenated, labels={}):
         if self.mode != "write":
             raise ValueError ("Dataset opened with read mode")
 
+        turn_angle = np.array([labels["current_turn_angle"]])
+        future_points = np.array(labels["points"]).astype(np.float32)
+        future_points = future_points.reshape((-1,))
+        stacked_labels = np.hstack((turn_angle,future_points))
+
         self.dset_data.resize((self.write_idx + 1, self.num_channels, self.in_res[0], self.in_res[1]))
-        self.dset_labels.resize((self.write_idx + 1, 1))
+        self.dset_labels.resize((self.write_idx + 1,  EnumIndices.end_idx))
         self.dset_data[self.write_idx, ...] = images_concatenated
-        self.dset_labels[self.write_idx, ...] = np.array([labels])
+        self.dset_labels[self.write_idx, ...] = stacked_labels
         self.write_idx +=1
 
 def step_weighting_loss(target, output, criterion):
