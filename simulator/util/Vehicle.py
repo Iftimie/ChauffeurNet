@@ -110,56 +110,87 @@ class Vehicle(Actor):
             m_func = interp1d([min_x, max_x], [self.range_angle[0], self.range_angle[1]])
             self.turn_angle = m_func(x_pos)
 
-    def simulate(self, key_pressed, mouse):
-        self.interpret_key(key_pressed)
-        self.interpret_mouse(mouse)
-
+    def update_parameters(self):
         x, y, z, roll, yaw, pitch = self.get_transform()
 
-        if abs(self.turn_angle) > 0.0001: # is the car turning?
+        if abs(self.turn_angle) > 0.0001:  # is the car turning?
 
-            z, x, yaw = self.kinematic_model(z,x, yaw, self.delta)
+            z, x, yaw = self.kinematic_model(z, x, yaw, self.delta)
 
-            tmp_z,tmp_x, tmp_yaw = z, x, yaw
-            #next location prediction
-            for i in range (self.next_locations.shape[1]):
+            tmp_z, tmp_x, tmp_yaw = z, x, yaw
+            # next location prediction
+            for i in range(self.next_locations.shape[1]):
                 tmp_z, tmp_x, tmp_yaw = self.kinematic_model(tmp_z, tmp_x, tmp_yaw, self.delta * 4)
                 self.next_locations[0, i] = tmp_x
                 self.next_locations[2, i] = tmp_z
         else:
             z, x = self.linear_model(z, x, yaw, self.delta)
             tmp_z, tmp_x = z, x
-            #next location prediction
+            # next location prediction
             for i in range(self.next_locations.shape[1]):
-                tmp_z, tmp_x = self.linear_model(tmp_z, tmp_x, yaw , self.delta * 4)
+                tmp_z, tmp_x = self.linear_model(tmp_z, tmp_x, yaw, self.delta * 4)
                 self.next_locations[0, i] = tmp_x
                 self.next_locations[2, i] = tmp_z
 
         self.set_transform(x, y, z, roll, yaw, pitch)
 
         x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.camera.get_transform()
-        displacement_vector = np.array([[0,0,-200,1]]).T
+        displacement_vector = np.array([[0, 0, -200, 1]]).T
         displacement_vector = rot_y(yaw - pi).dot(displacement_vector)
-        x +=displacement_vector[0]
-        z +=displacement_vector[2]
+        x += displacement_vector[0]
+        z += displacement_vector[2]
         self.camera.set_transform(x, y_c, z, roll_c, yaw, pitch_c)
 
-    def simulate_given_waypoint(self, x,z,yaw):
+    def simulate(self, key_pressed, mouse):
+        self.interpret_key(key_pressed)
+        self.interpret_mouse(mouse)
+        self.update_parameters()
+
+
+    def simulate_given_waypoint(self, x,z,yaw, mouse):
         """
         This method should not modify the speed, it will update the position and the orientation, given the desired location and orientation
         """
+        if self.speed == 0:
+            return
         x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.get_transform()
 
-        dx,dz = x-x_c, z-z_c
-        mag = sqrt(dx**2 + dz**2)
-        if self.speed == 0:return
-        step = mag / self.speed
-        x_n = x_c + dx/step
-        z_n = z_c + dz/step
-        dyaw = yaw - yaw_c
+        #future position if steering would be straight
+        z_f, x_f = self.linear_model(z_c, x_c, yaw_c, self.delta)
+        z_h, x_h = z_f - z_c, x_f - x_c             #the heading vector
+        z_d, x_d = z   - z_c, x   - x_c                 #the desired heading vector
 
-        self.turn_angle = math.atan(dyaw * self.wheel_base/self.speed)
-        yaw_n = yaw_c + dyaw
 
-        self.set_transform(x=x_n,z=z_n,yaw=yaw_n)
+        heading = np.array([x_h, 0, z_h])
+        heading = heading / np.linalg.norm(heading)
+        desired = np.array([x_d, 0, z_d])
+        desired = desired / np.linalg.norm(desired)
+        delta_angle = np.arccos(heading.dot(desired))
+        cross = np.cross(heading, desired)
+
+        plane_normal = np.array([0,-1,0])
+
+        if plane_normal.dot(cross) > 0:
+            delta_angle = -delta_angle
+
+        next_turn_angle = math.atan(delta_angle * self.wheel_base/self.speed) #the desired turn angle that would take us from current yaw to desired yaw in an instant
+        next_turn_angle = max(self.range_angle[0], min(next_turn_angle* 2, self.range_angle[1]))  # clamp the desired turn angle since that is not possible
+        #I don't fucking know why it has to be multiplied by 2 but it works
+        self.turn_angle = next_turn_angle
+
+        self.update_parameters()
+        # self.interpret_mouse(mouse)
+
+        # # Don't update the position.
+        # dx,dz = x-x_c, z-z_c
+        # mag = sqrt(dx**2 + dz**2)
+        # if self.speed == 0:return
+        # step = mag / self.speed
+        # x_n = x_c + dx/step
+        # z_n = z_c + dz/step
+        # dyaw = yaw - yaw_c
+        # self.turn_angle = math.atan(dyaw * self.wheel_base/self.speed) #the desired turn angle that would take us from current yaw to desired yaw in an instant
+        # self.turn_angle = max(self.range_angle[0], min(self.turn_angle, self.range_angle[1]))  # clamp the desired turn angle since that is not possible
+        # yaw_n = yaw_c + dyaw
+        # # self.set_transform(x=x_n,z=z_n,yaw=yaw_n)
         pass

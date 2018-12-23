@@ -29,13 +29,16 @@ def test_simulate_waypoint(all_states):
     vehicle.set_transform(x=100)
     event_bag = EventBag("../../data/recording.h5", record=False)
 
-    for state in all_states:
+    for i in range(len(all_states)):
+        state = all_states[i]
         key, x_mouse, y_mouse = event_bag.next_event()
         next_vehicle_T = state[0]
         x,y,z,roll,yaw,pitch = params_from_tansformation(next_vehicle_T)
 
         vehicle.interpret_key(key) # this is necessary for the speed
-        vehicle.simulate_given_waypoint(x,z,yaw)
+        vehicle.simulate_given_waypoint(x,z,yaw, (x_mouse, y_mouse))
+
+
 
         x_n,y_n,z_n,roll_n,yaw_n,pitch_n = vehicle.get_transform()
 
