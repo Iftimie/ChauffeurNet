@@ -22,7 +22,7 @@ class Actor:
         self.vertices_W = self.T.dot(self.vertices_L)
 
         self.DRAW_POLYGON = True
-        self.ratio = 6.6666666666  #TODO in case we do not render at the full size. if normal rendering at VGA size, then ratio is 1, we don;t need to downscale anything
+        self.ratio = 3.333333  #TODO in case we do not render at the full size. if normal rendering at VGA size, then ratio is 1, we don;t need to downscale anything
         self.render_thickness = 5
 
         self.is_active = False

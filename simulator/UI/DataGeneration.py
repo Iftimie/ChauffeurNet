@@ -22,7 +22,7 @@ class Renderer:
             raise ("No world available")
         self.world.load_world()
 
-        self.in_res = (72, 96)
+        self.in_res = (144, 192)
 
         self.camera = self.world.get_camera_from_actors()
         self.camera.set_transform(y = -1200)

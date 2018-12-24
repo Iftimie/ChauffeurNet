@@ -33,10 +33,10 @@ class FeatureExtractor(nn.Module):
         self.block3 = self.conv_block(32,64)
 
     def forward(self, x):
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        return x
+        L1 = self.block1(x)
+        L2 = self.block2(L1)
+        L3 = self.block3(L2)
+        return [L1,L2,L3]
 
 class Upsampling(nn.Module):
 
@@ -44,7 +44,7 @@ class Upsampling(nn.Module):
         conv1 = nn.ConvTranspose2d(in_channels=in_channels, out_channels=out_channels, kernel_size=4, stride=2, padding=1)
         batc1 = nn.BatchNorm2d(out_channels)
         relu1 = nn.ReLU(inplace=True)
-        conv2 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3, stride=1,padding=1)
+        conv2 = nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=3, stride=1,padding=1)
         #TODO change the parameters in convTranspose2D such thatwe obtain the doubled output after applying convtranspose and conv with padding 1
         batc2 = nn.BatchNorm2d(out_channels)
         relu2 = nn.ReLU(inplace=True)
@@ -54,21 +54,22 @@ class Upsampling(nn.Module):
     def __init__(self):
         super(Upsampling, self).__init__()
 
-        self.block1 = self.deconv_block(16,16)
-        self.block2 = self.deconv_block(16,16)
+        self.block1 = self.deconv_block(64,32)
+        self.block2 = self.deconv_block(32,16)
         self.block3 = self.deconv_block(16,16)
 
         return
 
     def forward(self, x):
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        return x
+        L1,L2,L3 = x[0],x[1],x[2]
+        UP2 = self.block1(L3) + L2
+        UP3 = self.block2(UP2) + L1
+        UP4 = self.block3(UP3)
+        return UP4
 
 class SteeringPredictor(nn.Module):
 
-    def __init__(self, hidden_size = 64 * 9 * 12):
+    def __init__(self, hidden_size = 64 * 18 * 24):
         super(SteeringPredictor, self).__init__()
 
         self.hidden_size = hidden_size
@@ -125,17 +126,17 @@ class AgentRNN(nn.Module):
         super(AgentRNN, self).__init__()
 
         self.config             = config
-        self.f2w                = nn.Conv2d(in_channels=64, out_channels=16, kernel_size=3, padding=1) #feature maps to waypoint required shape
         self.i2h                = nn.Conv2d(in_channels=1 , out_channels=16, kernel_size=3, padding=1) #waypoint     to hidden   required shape
+        self.rel_i2h            = nn.ReLU(inplace=True)
         self.h2h                = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, padding=1) #hidded       to hidden   required shape
-        self.rel                = nn.ReLU(inplace=True)
+        self.rel_h2h            = nn.ReLU(inplace=True)
+        self.tan                = nn.Tanh()
         self.waypoint_predictor = WaypointHeatmap()
         self.upsampler         = Upsampling()
 
 
     def forward(self, x):
         # TODO initialize x_t0 to be the first waypoint produced by a convolution. x_t0 must not be the raw featuremaps
-        x = self.f2w(x)
         x = self.upsampler(x)
         waypoint = self.waypoint_predictor(x) #I think the network should interpret the first waypoint as the current position, but I will add no loss to it
                                                 #Since for the rest of the waypoints in range of horizon should be the future locations
@@ -143,8 +144,12 @@ class AgentRNN(nn.Module):
         future_waypoints = []
         for i in range(self.config.horizon):
             WihXt    = self.i2h(waypoint)
+            WihXt    = self.rel_i2h(WihXt)
+
             WhhHt_1  = self.h2h(h_t)
-            h_t      = self.rel(WihXt + WhhHt_1)
+            WhhHt_1  = self.rel_h2h(WhhHt_1)
+
+            h_t      = self.tan(WihXt + WhhHt_1)
             waypoint = self.waypoint_predictor(h_t)
             future_waypoints.append(waypoint)
 
@@ -166,7 +171,7 @@ class ChauffeurNet(nn.Module):
 
     def forward(self, x):
         features = self.feature_extractor(x)
-        steering = self.steering_predictor(features)
+        steering = self.steering_predictor(features[2])
         waypoints = self.agent_rnn(features)
 
         return steering, waypoints
@@ -188,12 +193,13 @@ class ChauffeurNet(nn.Module):
         indices = indices.cpu().numpy()
         # This way it gets y and x
 
-        # if True:
-        #     fig, (ax1) = plt.subplots(1, 1)
-        #     waypoints_pred = waypoints_pred.cpu()
-        #     image_plot1 = ax1.imshow(np.squeeze(waypoints_pred[1, 0, ...]))
-        #     plt.colorbar(image_plot1, ax = ax1)
-        #     plt.show()
+        if False:
+            for i in range(8):
+                waypoints_pred = waypoints_pred.cpu()
+                plt.clf()
+                plt.imshow(np.squeeze(waypoints_pred[i, 0, ...]))
+                plt.colorbar()
+                plt.show()
         return indices
 
     def steering_weighted_loss(self, target, output):
@@ -245,7 +251,7 @@ class EnumIndices:
 
 class DrivingDataset(Dataset):
 
-    def __init__(self, hdf5_file, mode = "read", in_res = (72,96), num_channels = 6):
+    def __init__(self, hdf5_file, mode = "read", in_res = (144,192), num_channels = 6):
         """
         Args:
             hdf5_file (string): Path to the hdf5 file with annotations.
@@ -256,7 +262,7 @@ class DrivingDataset(Dataset):
         self.num_channels = 6
         self.mode = mode
 
-        self.ratio = 6.66666666
+        self.ratio = 3.333333
 
         if mode == "read":
             self.file = h5py.File(hdf5_file,"r", driver='core')
@@ -297,11 +303,16 @@ class DrivingDataset(Dataset):
                     centred_row = row - y_i
                     future_poses[i, 0, row, col] = exp(-((centred_col ** 2 + centred_row ** 2)) / (2 * sigma ** 2))
 
-        # if True:
-        #     fig, (ax1) = plt.subplots(1, 1)
-        #     image_plot1 = ax1.imshow(np.squeeze(future_poses[i, 0, ...]))
-        #     plt.colorbar(image_plot1, ax = ax1)
-        #     plt.show()
+        if False:
+            # fig, (ax1) = plt.subplots(1, 1)
+            # for i in range(8):
+            #     ax1.clear()
+            #     image_plot1 = ax1.imshow(np.squeeze(future_poses[i, 0, ...]))
+            #     plt.colorbar(image_plot1, ax = ax1)
+            #     plt.show()
+            for i in range(8):
+                plt.imshow(np.squeeze(future_poses[i, 0, ...]))
+                plt.show()
         return future_poses
 
     def __getitem__(self, idx):

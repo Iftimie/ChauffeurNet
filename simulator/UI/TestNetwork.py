@@ -22,7 +22,7 @@ class Simulator(GUI):
 
         #event_bag represents the data that the user generated. Has values such as the key pressed, and mouse
         self.event_bag = EventBag(event_bag_path, record=False)
-        self.in_res = (72, 96)
+        self.in_res = (144, 192)
         self.network_path = network_path
 
 
@@ -82,7 +82,7 @@ class Simulator(GUI):
 
                 image_test_nn = self.world.render(image=image_test_nn, C=self.camera)
                 for i in range(len(waypoints_coords)):
-                    image_test_nn = cv2.circle(image_test_nn,(waypoints_coords[i,1],waypoints_coords[i,0]),radius=1,color = (0,0+i*30,0),thickness=0)
+                    image_test_nn = cv2.circle(image_test_nn,(waypoints_coords[i,1],waypoints_coords[i,0]),radius=0,color = (0,0+i*30,0),thickness=0)
                 image_test_nn_resized = cv2.resize(image_test_nn,(640,480))
                 cv2.imshow("Simulator", image_test_nn_resized)
                 # cv2.imshow("input", input_to_network)

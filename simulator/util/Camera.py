@@ -2,7 +2,7 @@ from .Actor import Actor
 import numpy as np
 
 class Camera(Actor):
-    def __init__(self, cam_config = None, in_res= (72,96)):
+    def __init__(self, cam_config = None, in_res= (144,192)):
         """
         :param cam_config: dictionary containing image width, image height, focal length in centimeters, pixel_width in centimeters
         :param x, y, z, roll, yaw, pitch in world coordinates
@@ -14,7 +14,7 @@ class Camera(Actor):
         if cam_config == None:
             #TODO pixel width must also be resized I think
             #TODO ratio currently is 6.666666, any drawing with opencv should also be done in this way
-            self.cam_config = {"img_w": 96, "img_h": 72, "f_cm": 0.238 /self.ratio, "pixel_width_cm": 0.0003 }
+            self.cam_config = {"img_w": 192, "img_h": 144, "f_cm": 0.238 /self.ratio, "pixel_width_cm": 0.0003 }
         else:
             self.cam_config = cam_config
         self.K = self.create_K_4x4(self.cam_config)
