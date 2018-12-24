@@ -97,12 +97,10 @@ class WaypointHeatmap(nn.Module):
     def __init__(self):
         super(WaypointHeatmap, self).__init__()
 
-        self.upsampling = Upsampling()
         self.conv1 = self.conv_block(16,1)
         self.activation = nn.Softmax(dim=-1) # we want to do a spatial softmax
 
     def forward(self, x):
-        x = self.upsampling(x)
         x = self.conv1(x)
         x_before = x.data.cpu().numpy()
         x = self.activation(x)
@@ -127,22 +125,32 @@ class AgentRNN(nn.Module):
         super(AgentRNN, self).__init__()
 
         self.config             = config
-        self.wih                = nn.Conv2d(in_channels=64, out_channels=16, kernel_size=3, padding=1)
-        self.whh                = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, padding=1)
+        self.f2w                = nn.Conv2d(in_channels=64, out_channels=16, kernel_size=3, padding=1) #feature maps to waypoint required shape
+        self.i2h                = nn.Conv2d(in_channels=1 , out_channels=16, kernel_size=3, padding=1) #waypoint     to hidden   required shape
+        self.h2h                = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, padding=1) #hidded       to hidden   required shape
         self.rel                = nn.ReLU(inplace=True)
         self.waypoint_predictor = WaypointHeatmap()
+        self.upsampler         = Upsampling()
+
 
     def forward(self, x):
         # TODO initialize x_t0 to be the first waypoint produced by a convolution. x_t0 must not be the raw featuremaps
-        h_t = torch.zeros(1, 16, x.size(2), x.size(3), dtype=torch.float32).to(self.config.device)
+        x = self.f2w(x)
+        x = self.upsampler(x)
+        waypoint = self.waypoint_predictor(x) #I think the network should interpret the first waypoint as the current position, but I will add no loss to it
+                                                #Since for the rest of the waypoints in range of horizon should be the future locations
+        h_t = torch.zeros(waypoint.size(0), 16, waypoint.size(2), waypoint.size(3), dtype=torch.float32).to(self.config.device)
         future_waypoints = []
         for i in range(self.config.horizon):
-            WihXt    = self.wih(x)
-            WhhHt_1  = self.whh(h_t)
+            WihXt    = self.i2h(waypoint)
+            WhhHt_1  = self.h2h(h_t)
             h_t      = self.rel(WihXt + WhhHt_1)
             waypoint = self.waypoint_predictor(h_t)
-            x        = waypoint #use it as input for the next time step
             future_waypoints.append(waypoint)
+
+        future_waypoints = torch.stack(future_waypoints, dim=1)
+
+        return future_waypoints
 
 class ChauffeurNet(nn.Module):
 
@@ -153,13 +161,82 @@ class ChauffeurNet(nn.Module):
         self.steering_predictor = SteeringPredictor()
         self.agent_rnn = AgentRNN(config)
 
+        self.criterion_steering = nn.MSELoss(reduction='none')
+
+
     def forward(self, x):
         features = self.feature_extractor(x)
         steering = self.steering_predictor(features)
         waypoints = self.agent_rnn(features)
 
-        return steering
+        return steering, waypoints
 
+    def process_waypoints(self, waypoints_pred):
+        # x_values, x_args =torch.max(waypoints_pred,dim=4, keepdim=True)
+        # y_values_final, y_args_final = torch.max(x_values,dim=3, keepdim=True)
+        # y_values, y_args = torch.max(waypoints_pred, dim=3, keepdim=True)
+        # x_values_final, x_args_final = torch.max(y_values, dim=4, keepdim=True)
+        # points = torch.stack([torch.squeeze(y_args_final), torch.squeeze(x_args_final)],dim=1)
+        #Similar way, but I think its slower
+
+
+        waypoints_pred = torch.squeeze(waypoints_pred,0)
+        n = waypoints_pred.size(0)
+        d = waypoints_pred.size(3)
+        m = waypoints_pred.view(n, -1).argmax(1).view(-1, 1)
+        indices = torch.cat((m // d, m % d), dim=1)
+        indices = indices.cpu().numpy()
+        # This way it gets y and x
+
+        # if True:
+        #     fig, (ax1) = plt.subplots(1, 1)
+        #     waypoints_pred = waypoints_pred.cpu()
+        #     image_plot1 = ax1.imshow(np.squeeze(waypoints_pred[1, 0, ...]))
+        #     plt.colorbar(image_plot1, ax = ax1)
+        #     plt.show()
+        return indices
+
+    def steering_weighted_loss(self, target, output):
+        """
+            Weight each example by an amount. If the error between gt and output is > 0.012 (0.70 degrees) then the penalty
+            will be 5 otherwise the penalty is 0. This will force the network to learn better from hard examples and ignore
+            allready learned examples.
+        """
+        diff = torch.abs(output - target)
+        indices = ((diff > 0.0123599).type(torch.float32)) * 5.0
+        weight = indices
+
+        loss = self.criterion_steering(output, target)
+        loss = loss * weight
+        loss = loss.mean()
+        return loss
+
+    def waypoints_loss(self, future_penalty_maps,waypoints_pred):
+        #some sort of focal loss. taken from
+        #https://github.com/princeton-vl/CornerNet/blob/master/models/py_utils/kp_utils.py
+        #https://arxiv.org/pdf/1808.01244.pdf    eq (1)
+        pos_inds = future_penalty_maps.eq(1)
+        neg_inds = future_penalty_maps.lt(1)
+
+        neg_weights = torch.pow(1 - future_penalty_maps[neg_inds], 4).float()
+        loss = 0
+
+        pos_pred = waypoints_pred[pos_inds]
+        neg_pred = waypoints_pred[neg_inds]
+
+
+        pos_loss = torch.log(pos_pred) * torch.pow(1 - pos_pred, 2)
+        neg_loss = torch.log(1 - neg_pred) * torch.pow(neg_pred, 2) * neg_weights
+
+        num_pos = pos_inds.float().sum()
+        pos_loss = pos_loss.sum()
+        neg_loss = neg_loss.sum()
+
+        if pos_pred.nelement() == 0:
+            loss = loss - neg_loss
+        else:
+            loss = loss - (pos_loss + neg_loss) / num_pos
+        return loss
 
 class EnumIndices:
     turn_angle_start_idx = 0
@@ -231,15 +308,14 @@ class DrivingDataset(Dataset):
         if self.mode != "read":
             raise ValueError ("Dataset opened with write mode")
         data = self.dset_data[idx,...].astype(np.float32) / 255.0 - 0.5
-        target = self.dset_target[idx,[EnumIndices.turn_angle_start_idx]]
-        target_bin = max(np.array([0]), min(np.digitize(target, self.bin_edges) - 1, np.array([len(self.weighting_histogram) -1])))
+        steering = self.dset_target[idx,[EnumIndices.turn_angle_start_idx]]
+        steering_bin = max(np.array([0]), min(np.digitize(steering, self.bin_edges) - 1, np.array([len(self.weighting_histogram) -1])))
         #DONT FORGET TO ADD [] when indexing...   [len(self.weighting_histogram) -1]    tensors need the same shape
-        weight = np.array(self.weighting_histogram[target_bin])
+        steering_weight = np.array(self.weighting_histogram[steering_bin])
 
         future_penalty_maps = self.future_penalty_map(self.dset_target[idx,EnumIndices.future_points_start_idx:EnumIndices.end_idx])
 
-        # sample = {'data': data, 'target': target, 'weight':weight, "future_penalty_maps": future_penalty_maps}
-        sample = {'data': data, 'target': target, 'weight':weight}
+        sample = {'data': data, 'steering': steering, 'steering_weight':steering_weight, "future_penalty_maps": future_penalty_maps}
         return sample
 
     def append(self, images_concatenated, labels={}):
@@ -257,34 +333,27 @@ class DrivingDataset(Dataset):
         self.dset_labels[self.write_idx, ...] = stacked_labels
         self.write_idx +=1
 
-def step_weighting_loss(target, output, criterion):
-    """
-        Weight each example by an amount. If the error between gt and output is > 0.012 (0.70 degrees) then the penalty
-        will be 5 otherwise the penalty is 0. This will force the network to learn better from hard examples and ignore
-        allready learned examples.
-    """
-    diff = torch.abs(output - target)
-    indices = ((diff > 0.0123599).type(torch.float32)) * 5.0
-    weight = indices
 
-    loss = criterion(output, target)
-    loss = loss * weight
-    loss = loss.mean()
-    return loss
 
 def train_simple_conv(model, cfg, train_loader, optimizer, epoch):
     model.train()
-    criterion = nn.MSELoss(reduction='none')
     for batch_idx, sampled_batch in enumerate(train_loader):
         data = sampled_batch['data']
-        target = sampled_batch['target']
-        weight = sampled_batch['weight']
-        data, target, weight = data.to(cfg.device), target.to(cfg.device), weight.to(cfg.device)
+        steering_gt = sampled_batch['steering']
+        steering_weight = sampled_batch['steering_weight']
+        future_penalty_maps = sampled_batch['future_penalty_maps']
+
+        data                = data.to(cfg.device)
+        steering_gt         = steering_gt.to(cfg.device)
+        steering_weight     = steering_weight.to(cfg.device)
+        future_penalty_maps = future_penalty_maps.to(cfg.device)
         optimizer.zero_grad()
-        output = model(data)
+        steering_pred, waypoints_pred = model(data)
 
-        loss = step_weighting_loss(target,output,criterion)
+        loss_steering = model.steering_weighted_loss(steering_gt,steering_pred)
+        loss_waypoints = model.waypoints_loss(future_penalty_maps,waypoints_pred)
 
+        loss = loss_steering + loss_waypoints
         loss.backward()
         optimizer.step()
         if batch_idx % cfg.log_interval == 0:

@@ -88,9 +88,6 @@ class Renderer:
         image_path = np.zeros((*in_res, 3), np.uint8)
         image_agent_past_poses = np.zeros((*in_res, 3), np.uint8)
 
-
-
-
         for actor in world.actors:
             if type(actor) is Camera: continue
             if type(actor) is LaneMarking:
