@@ -6,66 +6,49 @@ from torch.utils.data import Dataset
 import os
 from math import *
 import matplotlib.pyplot as plt
+from torchvision.models.resnet import ResNet,BasicBlock,model_urls
+import torch.utils.model_zoo as model_zoo
+from config import Config
 
 """
 I define here the model, the dataset format and the training procedure for this specific model,
 as these are tightly coupled
 """
 
-class FeatureExtractor(nn.Module):
+class FeatureExtractor(ResNet):
 
-    def conv_block(self, in_channels, out_channels):
-        conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3, padding= 1)
-        batc1 = nn.BatchNorm2d(out_channels)
-        relu1 = nn.ReLU(inplace=True)
-        conv2 = nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=3, padding=1)
-        batc2 = nn.BatchNorm2d(out_channels)
-        relu2 = nn.ReLU(inplace=True)
-        pool2 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        block = nn.Sequential(conv1,batc1,relu1,conv2,batc2,relu2,pool2)
-        return block
-
-    def __init__(self):
-        super(FeatureExtractor, self).__init__()
-
-        self.block1 = self.conv_block(6,16)
-        self.block2 = self.conv_block(16,32)
-        self.block3 = self.conv_block(32,64)
+    def __init__(self, pretrained = True):
+        super(FeatureExtractor, self).__init__(BasicBlock, [2, 2, 2, 2])
+        self.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        self.load_my_state_dict(model_zoo.load_url(model_urls['resnet18']))
 
     def forward(self, x):
-        L1 = self.block1(x)
-        L2 = self.block2(L1)
-        L3 = self.block3(L2)
-        return [L1,L2,L3]
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
 
-class Upsampling(nn.Module):
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
 
-    def deconv_block(self, in_channels, out_channels):
-        conv1 = nn.ConvTranspose2d(in_channels=in_channels, out_channels=out_channels, kernel_size=4, stride=2, padding=1)
-        batc1 = nn.BatchNorm2d(out_channels)
-        relu1 = nn.ReLU(inplace=True)
-        conv2 = nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=3, stride=1,padding=1)
-        #TODO change the parameters in convTranspose2D such thatwe obtain the doubled output after applying convtranspose and conv with padding 1
-        batc2 = nn.BatchNorm2d(out_channels)
-        relu2 = nn.ReLU(inplace=True)
-        block = nn.Sequential(conv1,batc1,relu1,conv2,batc2,relu2)
-        return block
+        return x
 
-    def __init__(self):
-        super(Upsampling, self).__init__()
-
-        self.block1 = self.deconv_block(64,32)
-        self.block2 = self.deconv_block(32,16)
-        self.block3 = self.deconv_block(16,16)
-
-        return
-
-    def forward(self, x):
-        L1,L2,L3 = x[0],x[1],x[2]
-        UP2 = self.block1(L3) + L2
-        UP3 = self.block2(UP2) + L1
-        UP4 = self.block3(UP3)
-        return UP4
+    def load_my_state_dict(self, state_dict):
+        own_state = self.state_dict()
+        for name, param in state_dict.items():
+            if name not in own_state:
+                continue
+            if isinstance(param, nn.Parameter):
+                if name == "conv1.weight":
+                    copy1 = param.data.clone()
+                    copy2 = param.data.clone()
+                    param = torch.cat([copy1, copy2], 1)
+                else:
+                    # backwards compatibility for serialized parameters
+                    param = param.data
+            own_state[name].copy_(param)
 
 class SteeringPredictor(nn.Module):
 
@@ -132,7 +115,6 @@ class AgentRNN(nn.Module):
         self.rel_h2h            = nn.ReLU(inplace=True)
         self.tan                = nn.Tanh()
         self.waypoint_predictor = WaypointHeatmap()
-        self.upsampler         = Upsampling()
 
 
     def forward(self, x):
@@ -162,7 +144,9 @@ class ChauffeurNet(nn.Module):
     def __init__(self, config):
         super(ChauffeurNet, self).__init__()
 
-        self.feature_extractor = FeatureExtractor()
+        self.feature_extractor = FeatureExtractor(pretrained=True)
+        self.feature_extractor.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+
         self.steering_predictor = SteeringPredictor()
         self.agent_rnn = AgentRNN(config)
 
@@ -251,14 +235,13 @@ class EnumIndices:
 
 class DrivingDataset(Dataset):
 
-    def __init__(self, hdf5_file, mode = "read", in_res = (144,192), num_channels = 6):
+    def __init__(self, hdf5_file, mode = "read", num_channels = 6):
         """
         Args:
             hdf5_file (string): Path to the hdf5 file with annotations.
         """
         range = (-0.785398, 0.785398)
         bins = 45
-        self.in_res = in_res
         self.num_channels = 6
         self.mode = mode
 
@@ -275,9 +258,9 @@ class DrivingDataset(Dataset):
             self.bin_edges = bin_edges
         elif mode == "write":
             self.file = h5py.File(hdf5_file, "w")
-            self.dset_data = self.file.create_dataset("data", (0, self.num_channels, self.in_res[0], self.in_res[1]), dtype=np.uint8,
-                                                         maxshape=(None, self.num_channels, self.in_res[0], self.in_res[1]),
-                                                         chunks=(1, self.num_channels, self.in_res[0], self.in_res[1]))
+            self.dset_data = self.file.create_dataset("data", (0, self.num_channels, Config.r_res[0], Config.r_res[1]), dtype=np.uint8,
+                                                         maxshape=(None, self.num_channels, Config.r_res[0], Config.r_res[1]),
+                                                         chunks=(1, self.num_channels, Config.r_res[0], Config.r_res[1]))
             self.dset_labels = self.file.create_dataset("labels", (0, EnumIndices.end_idx), dtype=np.float32, maxshape=(None,  EnumIndices.end_idx),
                                                            chunks=(1, EnumIndices.end_idx))
             self.write_idx = 0
@@ -287,13 +270,17 @@ class DrivingDataset(Dataset):
 
     def future_penalty_map(self, points):
 
-        radius = int(ceil(20 / self.ratio))
+        #TODO points received in here should be in the full resolution. when downsampled to the network output, only then I should apply the fractional part regression
+
+        scale_factor = Config.r_res[0] / Config.o_res[0]
+        points /= scale_factor
+        radius = int(ceil(20 / Config.o_ratio))
         sigma = 0.3333 * radius
 
 
         points = np.reshape(points,(-1,2))
         num_points = points.shape[0]
-        future_poses = np.zeros((num_points, 1, self.in_res[0], self.in_res[1]))
+        future_poses = np.zeros((num_points, 1, Config.o_res[0], Config.o_res[1]))
 
         for i in range(num_points):
             x_i,y_i = int(points[i,0]), int(points[i,1])
@@ -318,7 +305,7 @@ class DrivingDataset(Dataset):
     def __getitem__(self, idx):
         if self.mode != "read":
             raise ValueError ("Dataset opened with write mode")
-        data = self.dset_data[idx,...].astype(np.float32) / 255.0 - 0.5
+        data = (self.dset_data[idx,...].astype(np.float32) - 128) / 128
         steering = self.dset_target[idx,[EnumIndices.turn_angle_start_idx]]
         steering_bin = max(np.array([0]), min(np.digitize(steering, self.bin_edges) - 1, np.array([len(self.weighting_histogram) -1])))
         #DONT FORGET TO ADD [] when indexing...   [len(self.weighting_histogram) -1]    tensors need the same shape
@@ -338,7 +325,7 @@ class DrivingDataset(Dataset):
         future_points = future_points.reshape((-1,))
         stacked_labels = np.hstack((turn_angle,future_points))
 
-        self.dset_data.resize((self.write_idx + 1, self.num_channels, self.in_res[0], self.in_res[1]))
+        self.dset_data.resize((self.write_idx + 1, self.num_channels, Config.r_res[0], Config.r_resv[1]))
         self.dset_labels.resize((self.write_idx + 1,  EnumIndices.end_idx))
         self.dset_data[self.write_idx, ...] = images_concatenated
         self.dset_labels[self.write_idx, ...] = stacked_labels

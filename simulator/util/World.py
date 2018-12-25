@@ -47,6 +47,7 @@ class World(Actor):
             self.save_path = os.path.join(directory, filename)
 
         # The following spagetti code, takes the class names of all actors, counts the actors, and and creates a dataset for each type in h5py
+        # No need to save the vehicle state (to_h5py), because in WorldEditor there is no vehicle
         dict_datasets = {} #{"name":[]}
         for actor in self.actors:
             if not actor.__class__.__name__ in dict_datasets.keys():
@@ -62,8 +63,6 @@ class World(Actor):
             list_actors_for_class_name = dict_datasets[class_name]
             all_actors = np.array(list_actors_for_class_name )
             dset = file.create_dataset(class_name, all_actors.shape,dtype=np.float32 )
-            print(dset.shape)
-            print(all_actors.shape)
 
             dset[...] = all_actors
         file.close()
@@ -74,7 +73,7 @@ class World(Actor):
         for actor in self.actors:
             if type(actor) is Camera:
                 camera = actor
-                camera.C = camera.create_cammera_matrix4x4(camera.T,camera.K)
+                camera.C = camera.create_cammera_matrix(camera.T,camera.K)
                 # when camera is loaded from hdf5, the object of type camera is created, then only the T is initialized from hdf5, C remains uninitialized
         if camera is None:
             camera = Camera()
@@ -82,6 +81,8 @@ class World(Actor):
         return camera
 
     def load_world(self):
+        if not os.path.exists(self.save_path):
+            raise ("No world available")
         file = h5py.File(self.save_path, "r")
         for class_name in file.keys():
             # module_imported =importlib.import_module("util")

@@ -6,6 +6,8 @@ from scipy.interpolate import interp1d
 from .transform.util import rot_y
 import math
 from simulator.util.transform.util import params_from_tansformation
+import copy
+from config import Config
 
 class Vehicle(Actor):
 
@@ -24,24 +26,29 @@ class Vehicle(Actor):
                                     [-30, 0,  60, 1],
                                     [30, 0,  60, 1],
                                     [30, 0,  -60, 1]]).T
+        self.vertices_W = self.T.dot(self.vertices_L)
         self.next_locations_by_steering = np.zeros((4,15), np.float32)
         self.next_locations_by_steering[3,:] = 1
         self.past_locations = []
-        self.vertices_W = self.T.dot(self.vertices_L)
         self.camera = camera
-        self.displacement_vector = np.array([[0, 0, -200, 1]]).T
+        self.camera.set_transform(y=Config.cam_height)
+        self.displacement_vector = np.array([[0, 0, Config.displace_z, 1]]).T
 
-        #Kinematic network and variables as in:
-        #https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/10-Unscented-Kalman-Filter.ipynb
-        self.turn_angle = 0        #alpha in radians
-        self.wheel_base = 120 #W length of car
-        self.speed = 0        #d
-        self.delta = 1        # unit of time here (unlike in World editor which is displacement. TODO change this
+        self.init_kinematic_vars()
+        self.init_reneder_options(play)
 
+        self.set_transform(x=Config.vehicle_x)
+
+    def init_kinematic_vars(self):
+        # Kinematic network and variables as in:
+        # https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/10-Unscented-Kalman-Filter.ipynb
+        self.turn_angle = 0  # alpha in radians
+        self.wheel_base = 120  # W length of car
+        self.speed = 0  # d
+        self.delta = 1  # unit of time here (unlike in World editor which is displacement.
         self.range_angle = (-0.785398, 0.785398)
 
-
-
+    def init_reneder_options(self, play):
         if play:
             self.render_radius = 2
             self.render_thickness = -1
@@ -56,26 +63,35 @@ class Vehicle(Actor):
         self.render_past_locations = False
         self.render_past_locations_thickness = 2
         self.render_past_locations_radius = 2
-        self.num_past_poses = 40
-        self.num_skip_poses = 5
-        #TODO do not forget that the delta time must be the same in all settings
+
+    def get_relevant_states(self):
+        #It should contain only primitive datatypes, numpy arrays, lists of numpy arrays, no other User defined class
+        states = {}
+        states["vertices_W"] = self.vertices_W.copy()
+        states["next_locations_by_steering"] = self.next_locations_by_steering.copy()
+        states["past_locations"] = copy.deepcopy(self.past_locations)
+        states["camera"] = copy.deepcopy(self.camera)
+        states["turn_angle"] = self.turn_angle
+        states["speed"] = self.speed
+        states["T"] = self.T
+        return states
 
     def render_next_locations_by_steering_func(self, image, C):
         if self.next_locations_by_steering.shape[1] > 1:
             x, y = C.project(self.next_locations_by_steering)
             for i in range(0, len(x)):
-                thick = int(ceil(self.render_thickness / self.ratio))
-                radius = int(ceil(self.render_radius / self.ratio))
+                thick = int(ceil(self.render_thickness / Config.r_ratio))
+                radius = int(ceil(self.render_radius / Config.r_ratio))
                 image = cv2.circle(image, (x[i], y[i]), radius , (0, 0, 255),thick)
         return image
 
     def render_past_locations_func(self, image, C):
         if len(self.past_locations) > 0:
-            array_past_locations = np.array(self.past_locations[::self.num_skip_poses]).T
+            array_past_locations = np.array(self.past_locations[::Config.num_skip_poses]).T
             x, y = C.project(array_past_locations)
             for i in range(0, len(x)):
-                thick = int(ceil(self.render_past_locations_thickness / self.ratio))
-                radius = int(self.render_past_locations_radius / self.ratio)
+                thick = int(ceil(self.render_past_locations_thickness / Config.r_ratio))
+                radius = int(self.render_past_locations_radius / Config.r_ratio)
                 image = cv2.circle(image, (x[i], y[i]), radius, (0, 0, 255),thick )
         return image
 
@@ -89,30 +105,15 @@ class Vehicle(Actor):
 
         return image
 
-    # @Override
-    def from_h5py(self, vect):
-        super(Vehicle, self).from_h5py(vect)
-        s_T_matrix = 16
-        s_points = self.vertices_L.shape[1] * 4
-        offset = s_T_matrix +s_points
-        self.turn_angle = vect[offset]  # alpha in radians
-        self.speed = vect[offset + 1]  # d
-
-    #Override
-    def to_h5py(self):
-        vect = super(Vehicle, self).to_h5py()
-        vect = np.hstack((vect, np.array([self.turn_angle, self.speed])))
-        return vect
-
     def kinematic_model(self, z, x, yaw, delta):
         distance = self.speed * delta
         tan_steering = tan(self.turn_angle)
         beta_radians = (distance / self.wheel_base) * tan_steering
         r = self.wheel_base / tan_steering
-        sinh, sinhb = sin(yaw), sin(yaw + beta_radians)
-        cosh, coshb = cos(yaw), cos(yaw + beta_radians)
-        z += -r * sinh + r * sinhb
-        x += r * cosh - r * coshb
+        sinh_, sinhb_ = sin(yaw), sin(yaw + beta_radians)
+        cosh_, coshb_ = cos(yaw), cos(yaw + beta_radians)
+        z += -r * sinh_ + r * sinhb_
+        x += r * cosh_ - r * coshb_
         yaw += beta_radians
         return z, x, yaw
 
@@ -138,15 +139,16 @@ class Vehicle(Actor):
     # @Override
     def interpret_mouse(self, mouse):
         if self.is_active and mouse is not None:
-            min_x = 150
-            max_x = 640 - 150
+            min_x = int(Config.r_res[1] * 0.11)
+            max_x = Config.r_res[1] - min_x
             x_pos = max(min_x, min(mouse[0], max_x))  # 45 degrees
             m_func = interp1d([min_x, max_x], [self.range_angle[0], self.range_angle[1]])
             self.turn_angle = m_func(x_pos)
 
     def append_past_location(self, past_location):
-        if len(self.past_locations) > self.num_past_poses:
+        if len(self.past_locations) > Config.num_past_poses:
             self.past_locations.pop(0)
+
         if len(past_location) == 3: # if it is received as a tuple
             self.past_locations.append([past_location[0],past_location[1],past_location[2],1])
         elif len(past_location) == 4: # if it is received as a transformation matrix
@@ -190,7 +192,6 @@ class Vehicle(Actor):
         self.interpret_mouse(mouse)
         self.update_parameters()
 
-
     def simulate_given_waypoint(self, x,z,yaw, mouse):
         """
         This method should not modify the speed, it will update the position and the orientation, given the desired location and orientation
@@ -223,18 +224,4 @@ class Vehicle(Actor):
         self.turn_angle = next_turn_angle
 
         self.update_parameters()
-        # self.interpret_mouse(mouse)
 
-        # # Don't update the position.
-        # dx,dz = x-x_c, z-z_c
-        # mag = sqrt(dx**2 + dz**2)
-        # if self.speed == 0:return
-        # step = mag / self.speed
-        # x_n = x_c + dx/step
-        # z_n = z_c + dz/step
-        # dyaw = yaw - yaw_c
-        # self.turn_angle = math.atan(dyaw * self.wheel_base/self.speed) #the desired turn angle that would take us from current yaw to desired yaw in an instant
-        # self.turn_angle = max(self.range_angle[0], min(self.turn_angle, self.range_angle[1]))  # clamp the desired turn angle since that is not possible
-        # yaw_n = yaw_c + dyaw
-        # # self.set_transform(x=x_n,z=z_n,yaw=yaw_n)
-        pass

@@ -1,47 +1,35 @@
 from .Actor import Actor
 import numpy as np
+from config import Config
 
 class Camera(Actor):
-    def __init__(self, cam_config = None, in_res= (144,192)):
+    def __init__(self):
         """
         :param cam_config: dictionary containing image width, image height, focal length in centimeters, pixel_width in centimeters
         :param x, y, z, roll, yaw, pitch in world coordinates
         T = transformation matrix in world coordinates R * t
         """
         super().__init__()
-        if in_res == None:
-            raise ValueError("in_res must not be None")
-        if cam_config == None:
-            #TODO pixel width must also be resized I think
-            #TODO ratio currently is 6.666666, any drawing with opencv should also be done in this way
-            self.cam_config = {"img_w": 192, "img_h": 144, "f_cm": 0.238 /self.ratio, "pixel_width_cm": 0.0003 }
-        else:
-            self.cam_config = cam_config
-        self.K = self.create_K_4x4(self.cam_config)
-        self.set_transform(x=0, y=-1500, z=0, roll=0, yaw=0, pitch=-1.5708)
+        self.cam_config = {"img_h": Config.r_res[0], "img_w": Config.r_res[1],  "f_cm": 0.238 /Config.r_ratio, "pixel_width_cm": 0.0003 }
+
+        self.K = self.create_K(self.cam_config)
+        self.set_transform(x=0, y=Config.cam_height, z=0, roll=0, yaw=0, pitch=-1.5708)
 
         self.project = self.project_perspective
 
     def create_internal_cam_matrix(self, in_res = None):
+        """
+        Useful for creating penalty maps that are not at the resolution of rendering
+        """
         if in_res == None:
             raise ValueError("in_res must not be None")
         self.cam_config["img_h"] = in_res[0]
         self.cam_config["img_w"] = in_res[1]
-        self.K = self.create_K_4x4(self.cam_config)
+        self.K = self.create_K(self.cam_config)
         x,y,z,roll,yaw,pitch = self.get_transform()
         self.set_transform(x=x, y=y, z=z, roll=roll, yaw=yaw, pitch=pitch)
 
     def create_cammera_matrix(self, T, K):
-        """
-        Create camera matrix. it will be a 4x4 matrix
-        T defines the camera rotation and translation in world coordinate system.
-        we need a matrix that will transform points from world coordinates to camera coordinates in order to project them
-        that matrix will do the inverse of translation followed by inverse of rotation followed by camera matrix
-        """
-        C = K.dot(np.linalg.inv(T)[:3,:])
-        return C
-
-    def create_cammera_matrix4x4(self, T, K):
         """
         Create camera matrix. it will be a 4x4 matrix
         T defines the camera rotation and translation in world coordinate system.
@@ -58,26 +46,7 @@ class Camera(Actor):
         C = K.dot(np.linalg.inv(T))
         return C
 
-    def create_K(self, cam_config):
-        img_w = cam_config["img_w"]
-        img_h = cam_config["img_h"]
-        f_cm  = cam_config["f_cm"]
-        pixel_width = cam_config["pixel_width_cm"]
-
-        fx = f_cm / pixel_width
-        fy = f_cm / pixel_width
-        cx = img_w / 2
-        cy = img_h / 2
-
-        K = np.eye(3)
-        K[0,0] = fx
-        K[1,1] = fy
-        K[0,2] = cx
-        K[1,2] = cy
-
-        return K
-
-    def create_K_4x4(self,cam_config):
+    def create_K(self,cam_config):
         """
 
         Maybe using a matrix with smaller values, it will reduce some noise in projection???
@@ -112,9 +81,10 @@ class Camera(Actor):
     #@Override
     def set_transform(self, x=None, y=None, z=None, roll=None, yaw=None, pitch=None):
         super(Camera, self).set_transform(x ,y ,z ,roll , yaw , pitch )
-        self.C = self.create_cammera_matrix4x4(self.T, self.K)
+        self.C = self.create_cammera_matrix(self.T, self.K)
 
     def project_ortographic(self, vertices):
+        """Don't delete yet"""
         homogeneous_vertices = self.C.dot(vertices)
         homogeneous_vertices /= homogeneous_vertices[2, :]
         homogeneous_vertices += self.center
@@ -123,13 +93,14 @@ class Camera(Actor):
         y = v[1, :]
         return x, y
 
-    def project_perspective(self, vertices):
+    def project_perspective(self, vertices, as_float=False):
         #vertices have shape 4xN.
         #C is 3x4 matrix
         homogeneous_vertices = self.C.dot(vertices)
         # divide u, v by z
-        projected_vertices = np.round(homogeneous_vertices / homogeneous_vertices[2, :])
-        v = projected_vertices.astype(np.int32)
+        v = homogeneous_vertices / homogeneous_vertices[2, :]
+        if as_float == False:
+            v = np.round(v).astype(np.int32)
         x = v[0, :]
         y = v[1, :]
         return x, y

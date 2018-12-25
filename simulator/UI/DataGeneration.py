@@ -7,79 +7,51 @@ from simulator.util.Camera import Camera
 from simulator.util.LaneMarking import LaneMarking
 from simulator.util.Path import Path
 import atexit
-from simulator.UI.GUI import EventBag
+from simulator.UI.Record import EventBag
 from network.models.SimpleConv import DrivingDataset
 import pickle
 import matplotlib.pyplot as plt
 
 class Renderer:
 
-    def __init__(self, world_path="", h5_path="", event_bag_path = "", overwrite = False, do_presimulate = False, debug= False):
+    def __init__(self, world_path="", h5_path="", event_bag_path = "", overwrite = False,  debug= False):
         self.debug = debug
 
         self.world = World(world_path = world_path)
-        if not os.path.exists(self.world.save_path):
-            raise ("No world available")
         self.world.load_world()
 
-        self.in_res = (144, 192)
-
         self.camera = self.world.get_camera_from_actors()
-        self.camera.set_transform(y = -1200)
-        self.camera.create_internal_cam_matrix(in_res = self.in_res)
-
         self.vehicle = Vehicle(self.camera, play =False)
-        self.vehicle.set_transform(x = 100)
         self.world.actors.append(self.vehicle)
 
-        self.h5_path = h5_path
-        self.event_bag_path = event_bag_path
-        self.event_bag = EventBag(self.event_bag_path, record=False)
-
-        self.all_states = []
+        self.event_bag = EventBag(event_bag_path, record=False)
+        self.path = Path(self.event_bag.list_states)
 
         atexit.register(self.cleanup)
 
         self.overwrite = overwrite
-        self.do_presimulate = do_presimulate
+        self.h5_path = h5_path
         if overwrite == True or not os.path.exists(self.h5_path):
-            self.dataset = DrivingDataset(self.h5_path, mode= "write", in_res=self.in_res)
+            self.dataset = DrivingDataset(self.h5_path, mode= "write")
         else:
             self.dataset = None
             print ("Dataset allready exists, not overwriting")
             return
 
-
     def cleanup(self):
         if self.dataset !=None:
             self.dataset.file.close()
 
-    def get_sin_noise(self):
-        noise = np.sin(self.iter / 10) # * 5 (increase amplitude)
-        return noise
-
     def add_noise_over_camera(self):
+        def get_sin_noise():
+            noise = np.sin(self.iter / 10)  # * 5 (increase amplitude)
+            return noise
         cam_params = list(self.camera.get_transform())
-        noise = self.get_sin_noise()
+        noise = get_sin_noise()
         #cam_params[0] += noise * 10 #x
         #cam_params[2] += noise * 10 #z
         cam_params[4] += noise / 20 #yaw
         self.camera.set_transform(*cam_params)
-
-    def pre_simulate(self):
-        if os.path.exists("../../data/tmp_all_states.pkl") and not self.do_presimulate:
-            print ("Loading cached all states")
-            self.all_states = pickle.load(open("../../data/tmp_all_states.pkl","rb"))
-        else:
-            print ("Creating all states")
-            for i in range(len(self.event_bag)):
-                key, x, y = self.event_bag.next_event()
-                self.vehicle.simulate(key, (x,y))
-
-                self.all_states.append([self.vehicle.T.copy(), self.camera.C.copy(), self.vehicle.next_locations_by_steering.copy(), self.vehicle.vertices_W.copy(), self.vehicle.turn_angle])
-            pickle.dump(self.all_states,open("../../data/tmp_all_states.pkl","wb"))
-        self.event_bag.reset()
-        self.path = Path(self.all_states)
 
     @staticmethod
     def render_inputs_on_separate_planes(world, vehicle, path, path_idx, in_res):
@@ -148,7 +120,6 @@ class Renderer:
     def render(self):
 
         if self.overwrite == False:return
-        self.pre_simulate()
 
         for i in range(len(self.all_states) - self.path.num_future_poses):
 
@@ -187,7 +158,6 @@ if __name__ =="__main__":
                          h5_path="../../data/pytorch_data.h5",
                          event_bag_path="../../data/recording.h5",
                          overwrite=True,
-                         do_presimulate=True,
                          debug=False)
     # DONT FORGET TO CHANGE OVERWRITE
     renderer.render()

@@ -4,8 +4,7 @@ import cv2
 import os
 import numpy as np
 import time
-import h5py
-import atexit
+from config import Config
 
 class GUI:
 
@@ -28,7 +27,7 @@ class GUI:
         Given the mouse click, find the 3D point on the ground plane
         """
         #I Don't fucking understand why I have to fucking substract mouse.x from 640. I just don't
-        mouse_homogeneous = np.array([[640-mouse[0],mouse[1],1,1]]).T
+        mouse_homogeneous = np.array([[Config.r_res[1]-mouse[0],mouse[1],1,1]]).T
         ray_eye = np.linalg.inv(self.camera.K).dot(mouse_homogeneous)
         ray_eye[2] = 1
         ray_eye[3] = 0
@@ -41,7 +40,6 @@ class GUI:
 
         t = -O.T.dot(plane_normal) / ray_world.T.dot(plane_normal)
         point_on_plane = O + ray_world * t
-        # point_on_plane[0] *=-1
 
         return point_on_plane
 
@@ -61,7 +59,7 @@ class GUI:
             print ("Warning, world not loaded, creating a new one")
 
         self.pressed_key = None
-        self.display_image = np.zeros((480, 640, 3), np.uint8)
+        self.display_image = np.zeros((Config.r_res[0], Config.r_res[1], 3), np.uint8)
         self.window_name = window_name
         self.running = True
         self.time_step = 33
@@ -75,7 +73,7 @@ class GUI:
             time.sleep(seconds_to_sleep)
         return key
 
-    def interact(self):
+    def interpretIO_and_render(self):
         """
         Will render the world, will listen for keyboard and mouse inputs
         """
@@ -91,45 +89,3 @@ class GUI:
 
     def interpret_key(self):
         pass
-
-class EventBag:
-
-    def __init__(self, file_path, record = True):
-        self.record = record
-        if record == True:
-            self.file = h5py.File(file_path, "w")
-            #TODO change the name from recording to events
-            self.dset = self.file.create_dataset("recording", shape=(0,3), maxshape=(None,3),chunks=(1,3), dtype=np.int32)
-        else:
-            self.file = h5py.File(file_path, "r")
-            self.dset = self.file['recording']
-
-        self.crt_idx = 0
-        atexit.register(self.cleanup)
-
-    def append(self, events):
-        if self.record == True:
-            self.dset.resize((self.crt_idx + 1, 3))
-            self.dset[self.crt_idx,...] = np.array(events)
-            self.crt_idx +=1
-        else:
-            raise ValueError("EventBag opened as read mode")
-
-    def __len__(self):
-        return self.dset.shape[0]
-
-    def next_event(self):
-        if self.record == False:
-            key = self.dset[self.crt_idx,0]
-            x = self.dset[self.crt_idx,1]
-            y = self.dset[self.crt_idx,2]
-            self.crt_idx +=1
-        else:
-            raise ValueError("EventBag opened as write mode")
-        return key,x,y
-
-    def reset(self):
-        self.crt_idx = 0
-
-    def cleanup(self):
-        self.file.close()

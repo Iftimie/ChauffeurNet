@@ -1,0 +1,6 @@
+the resolution in GUI should be dependend on config.
+mouse interpretation in vehicle should be dependend on config in_Res
+
+These 2 should be part of a global config
+self.num_past_poses = 40
+self.num_skip_poses = 5

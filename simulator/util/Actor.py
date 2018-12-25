@@ -2,6 +2,7 @@ import numpy as np
 from .transform.util import transformation_matrix, params_from_tansformation
 import cv2
 from math import *
+from config import Config
 
 class Actor:
 
@@ -22,13 +23,10 @@ class Actor:
         self.vertices_W = self.T.dot(self.vertices_L)
 
         self.DRAW_POLYGON = True
-        self.ratio = 3.333333  #TODO in case we do not render at the full size. if normal rendering at VGA size, then ratio is 1, we don;t need to downscale anything
         self.render_thickness = 5
 
         self.is_active = False
         self.move_by_mouse = False
-
-        pass
 
     def render(self, image, C):
         """
@@ -43,7 +41,7 @@ class Actor:
             if self.DRAW_POLYGON:
                 image = cv2.fillPoly(image, [pts], color=self.c)
             else:
-                thick = int(ceil(self.render_thickness / self.ratio))
+                thick = int(ceil(self.render_thickness / Config.r_ratio))
                 image = cv2.polylines(image, [pts], False, color=self.c,thickness= thick)
         return image
 
@@ -137,11 +135,17 @@ class Actor:
         self.set_transform(x, y, z, roll, yaw, pitch)
 
     def to_h5py(self):
+        """
+        Used to save the state of the world
+        """
         vect_T = np.reshape(self.T, (-1))
         vect_vertices_L = np.reshape(self.vertices_L, (-1))
         return np.hstack((vect_T, vect_vertices_L))
 
     def from_h5py(self, vect):
+        """
+        Used to load the state of the world
+        """
         s_T_matrix = 16
         self.T = np.reshape(vect[:s_T_matrix], (4,4))
         s_points = self.vertices_L.shape[1] * 4 #for each point we have 4 coordinates

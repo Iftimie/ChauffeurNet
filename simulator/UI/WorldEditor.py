@@ -1,7 +1,3 @@
-import cv2
-import numpy as np
-import os
-from simulator.util.World import World
 from simulator.util.LaneMarking import LaneMarking
 from simulator.util.CurvedLaneMarking import CurvedLaneMarking
 from simulator.util.TrafficLight import TrafficLight
@@ -29,7 +25,6 @@ Number keys: 1 LaneMarking
 C select camera immediately
 """
 
-
 class WorldEditor(GUI):
 
     def __init__(self, world_path=""):
@@ -42,9 +37,8 @@ class WorldEditor(GUI):
     #@Override
     def run(self):
         while True:
-            super(WorldEditor, self).interact()
+            super(WorldEditor, self).interpretIO_and_render()
 
-            # print (self.mouse_on_world(self.mouse))
             if self.selected_actor is not None:
                 self.selected_actor.interpret_key(self.pressed_key)
                 self.selected_actor.interpret_mouse(GUI.mouse_world)

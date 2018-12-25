@@ -69,7 +69,7 @@ class Simulator(GUI):
                 input_planes = Renderer.render_inputs_on_separate_planes(self.world,self.vehicle,path,i,self.in_res)
                 input_planes_concatenated = Renderer.prepare_images(input_planes, self.in_res, debug = False)
                 input_planes_concatenated = input_planes_concatenated[np.newaxis]
-                input_planes_concatenated = torch.from_numpy(input_planes_concatenated.astype(np.float32) / 255.0 - 0.5).to(config.device)
+                input_planes_concatenated = torch.from_numpy((input_planes_concatenated.astype(np.float32) - 128) / 128).to(config.device)
 
                 steering_pred, waypoints_pred = model(input_planes_concatenated)
                 waypoints_coords = model.process_waypoints(waypoints_pred)

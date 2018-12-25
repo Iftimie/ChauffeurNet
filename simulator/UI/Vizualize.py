@@ -1,9 +1,8 @@
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 import math
 from simulator.util.World import World
-from simulator.util.LaneMarking import LaneMarking
 from simulator.util.Camera import Camera
 
 

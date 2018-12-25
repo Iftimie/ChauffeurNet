@@ -4,6 +4,7 @@ from .transform.util import params_from_tansformation
 import cv2
 import math
 from math import *
+from config import Config
 
 class Path(Actor):
 
@@ -13,7 +14,7 @@ class Path(Actor):
         vertices_L: point locations expressed in local coordinate system in centimeters. vertices matrix will have shape
                 4xN
         vertices_W: point locations expressed in world coordinate system
-        all_states should be a list of states received from data generation...this is not too modular...but...TODO refactor this
+        all_states should be a list of states received from recording step
         """
         super().__init__()
         self.vertices_L = []
@@ -27,11 +28,6 @@ class Path(Actor):
         self.render_thickness = 40
         self.DRAW_POLYGON = False
         self.c = (180,180,180)
-        self.future_positions = 250 # we only want to render the next 200 positions from the current index
-
-        self.num_future_poses = 40
-        self.num_skip_poses = 5
-        # TODO do not forget that the delta time must be the same in all settings
 
     def render(self, image, C, path_idx):
         """
@@ -42,47 +38,18 @@ class Path(Actor):
         :return:      image with this object renderd
         """
         if self.vertices_W.shape[1] > 1:
-            selected_for_projection = self.vertices_W[:,path_idx:path_idx+self.future_positions]
+            selected_for_projection = self.vertices_W[:,path_idx:path_idx+ Config.path_future_len]
             x, y = C.project(selected_for_projection)
             pts = np.array([x, y]).T
             pts = pts.reshape((-1, 1, 2))
             if self.DRAW_POLYGON:
                 image = cv2.fillPoly(image, [pts], color=self.c)
             else:
-                thick = int(ceil(self.render_thickness / self.ratio))
+                thick = int(ceil(self.render_thickness / Config.r_ratio))
                 image = cv2.polylines(image, [pts], False, color=self.c,thickness= thick)
         return image
 
-    #Deprecated. It is very very storage heavy to render so many float32 planes
-    def render_future_poses(self, image, C, path_idx):
-        """
-        receives a single channel image and put a simple pixel over the location
-
-        it creates a 2D gaussian around the future point as in cornernet
-        https://arxiv.org/pdf/1808.01244.pdf
-        """
-
-        #TODO plotting should be done on the resized image because if I do resize it after I set the penalties,the maximum penalty won't be anymore 1 but someting less than 1
-
-        radius = int(ceil(20/self.ratio))
-        sigma = 0.3333 * radius
-        if self.vertices_W.shape[1] > 1:
-            selected_for_projection = self.vertices_W[:,[path_idx]]
-            x, y = C.project(selected_for_projection)
-            for i in range(len(x)):
-                x_i = x[i]
-                y_i = y[i]
-                for col in range(x_i-radius,x_i+radius):
-                    for row in range(y_i-radius,y_i+radius):
-                        centred_col = col - x_i
-                        centred_row = row - y_i
-                        image[row, col] = math.exp(-((centred_col**2+centred_row**2))/(2*sigma**2))
-        return image
-
-    # Deprecated. It is very very storage heavy to render so many float32 planes
     def project_future_poses(self, C, path_idx):
-        """
-        """
 
         if self.vertices_W.shape[1] > 1:
             selected_for_projection = self.vertices_W[:, [path_idx]]
