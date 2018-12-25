@@ -12,7 +12,7 @@ as these are tightly coupled
 
 class FeatureExtractor(ResNet):
 
-    def __init__(self, imagenet_trained= True):
+    def __init__(self, imagenet_trained= False):
         super(FeatureExtractor, self).__init__(BasicBlock, [2, 2, 2, 2])
         self.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         if imagenet_trained:
@@ -52,9 +52,9 @@ class SteeringPredictor(nn.Module):
         super(SteeringPredictor, self).__init__()
 
         self.hidden_size = hidden_size
-        self.drop1 = nn.Dropout(p=0.1, inplace=True)
+        self.drop1 = nn.Dropout(p=0.1)
         self.fc1 = nn.Linear(self.hidden_size, 256)
-        self.fc1_relu = nn.ReLU(inplace=True)
+        self.fc1_relu = nn.ReLU()
         self.fc2 = nn.Linear(256, 1)
 
     def forward(self, x):
@@ -70,7 +70,7 @@ class WaypointHeatmap(nn.Module):
     def conv_block(self, in_channels, out_channels):
         conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3,padding=1)
         batc1 = nn.BatchNorm2d(out_channels)
-        relu1 = nn.ReLU(inplace=True)
+        relu1 = nn.ReLU()
         block = nn.Sequential(conv1,batc1,relu1)
         return block
 
@@ -106,19 +106,24 @@ class AgentRNN(nn.Module):
 
         self.config             = config
         self.f2h                = nn.Conv2d(in_channels=128 , out_channels=32, kernel_size=3, padding=1) #feature      to hidden   required shape
+        self.rel_f2h            = nn.ReLU()
         self.f2i                = nn.Conv2d(in_channels=128 , out_channels=32, kernel_size=3, padding=1) #feature      to input    required shape
+        self.rel_f2i            = nn.ReLU()
 
         self.i2h                = nn.Conv2d(in_channels=32 , out_channels=32, kernel_size=3, padding=1) #waypoint     to hidden   required shape
-        self.rel_i2h            = nn.ReLU(inplace=True)
+        self.rel_i2h            = nn.ReLU()
         self.h2h                = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding=1) #hidded       to hidden   required shape
-        self.rel_h2h            = nn.ReLU(inplace=True)
+        self.rel_h2h            = nn.ReLU()
         self.tan                = nn.Tanh()
         self.waypoint_predictor = WaypointHeatmap()
 
 
     def forward(self, x):
         h_t = self.f2h(x)
+        h_t = self.rel_f2h(h_t)
+
         x_t = self.f2i(x)
+        x_t = self.rel_f2i(x_t)
 
         future_waypoints = []
         for i in range(self.config.horizon):
@@ -142,8 +147,6 @@ class ChauffeurNet(nn.Module):
         super(ChauffeurNet, self).__init__()
 
         self.feature_extractor = FeatureExtractor(imagenet_trained=True)
-        self.feature_extractor.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
-
         self.steering_predictor = SteeringPredictor()
         self.agent_rnn = AgentRNN(config)
 
@@ -152,19 +155,12 @@ class ChauffeurNet(nn.Module):
 
     def forward(self, x):
         features = self.feature_extractor(x)
-        steering = self.steering_predictor(features[2])
+        steering = self.steering_predictor(features)
         waypoints = self.agent_rnn(features)
 
         return steering, waypoints
 
     def process_waypoints(self, waypoints_pred):
-        # x_values, x_args =torch.max(waypoints_pred,dim=4, keepdim=True)
-        # y_values_final, y_args_final = torch.max(x_values,dim=3, keepdim=True)
-        # y_values, y_args = torch.max(waypoints_pred, dim=3, keepdim=True)
-        # x_values_final, x_args_final = torch.max(y_values, dim=4, keepdim=True)
-        # points = torch.stack([torch.squeeze(y_args_final), torch.squeeze(x_args_final)],dim=1)
-        #Similar way, but I think its slower
-
 
         waypoints_pred = torch.squeeze(waypoints_pred,0)
         n = waypoints_pred.size(0)
