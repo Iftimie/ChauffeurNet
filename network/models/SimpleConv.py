@@ -48,7 +48,7 @@ class FeatureExtractor(ResNet):
 
 class SteeringPredictor(nn.Module):
 
-    def __init__(self, hidden_size = 64 * 18 * 24):
+    def __init__(self, hidden_size = 128 * 36 * 48):
         super(SteeringPredictor, self).__init__()
 
         self.hidden_size = hidden_size
@@ -77,7 +77,7 @@ class WaypointHeatmap(nn.Module):
     def __init__(self):
         super(WaypointHeatmap, self).__init__()
 
-        self.conv1 = self.conv_block(16,1)
+        self.conv1 = self.conv_block(32,1)
         self.activation = nn.Softmax(dim=-1) # we want to do a spatial softmax
 
     def forward(self, x):
@@ -105,23 +105,24 @@ class AgentRNN(nn.Module):
         super(AgentRNN, self).__init__()
 
         self.config             = config
-        self.i2h                = nn.Conv2d(in_channels=1 , out_channels=16, kernel_size=3, padding=1) #waypoint     to hidden   required shape
+        self.f2h                = nn.Conv2d(in_channels=128 , out_channels=32, kernel_size=3, padding=1) #feature      to hidden   required shape
+        self.f2i                = nn.Conv2d(in_channels=128 , out_channels=32, kernel_size=3, padding=1) #feature      to input    required shape
+
+        self.i2h                = nn.Conv2d(in_channels=32 , out_channels=32, kernel_size=3, padding=1) #waypoint     to hidden   required shape
         self.rel_i2h            = nn.ReLU(inplace=True)
-        self.h2h                = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, padding=1) #hidded       to hidden   required shape
+        self.h2h                = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding=1) #hidded       to hidden   required shape
         self.rel_h2h            = nn.ReLU(inplace=True)
         self.tan                = nn.Tanh()
         self.waypoint_predictor = WaypointHeatmap()
 
 
     def forward(self, x):
-        # TODO initialize x_t0 to be the first waypoint produced by a convolution. x_t0 must not be the raw featuremaps
-        x = self.upsampler(x)
-        waypoint = self.waypoint_predictor(x) #I think the network should interpret the first waypoint as the current position, but I will add no loss to it
-                                                #Since for the rest of the waypoints in range of horizon should be the future locations
-        h_t = torch.zeros(waypoint.size(0), 16, waypoint.size(2), waypoint.size(3), dtype=torch.float32).to(self.config.device)
+        h_t = self.f2h(x)
+        x_t = self.f2i(x)
+
         future_waypoints = []
         for i in range(self.config.horizon):
-            WihXt    = self.i2h(waypoint)
+            WihXt    = self.i2h(x_t)
             WihXt    = self.rel_i2h(WihXt)
 
             WhhHt_1  = self.h2h(h_t)
