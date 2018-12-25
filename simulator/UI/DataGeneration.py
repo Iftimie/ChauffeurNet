@@ -160,7 +160,7 @@ if __name__ =="__main__":
                          h5_path="../../data/pytorch_data.h5",
                          event_bag_path="../../data/recorded_states.pkl",
                          overwrite=True,
-                         debug=False)
+                         debug=True)
     # DONT FORGET TO CHANGE OVERWRITE
     renderer.render()
     # renderer.visualize()

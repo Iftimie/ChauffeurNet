@@ -38,7 +38,9 @@ class Config:
 class ConfigSimpleConv(Config):
     def __init__(self, root_path = ".."):
         super().__init__()
-        from models.SimpleConv import DrivingDataset, ChauffeurNet, train_simple_conv
+        from models.SimpleConv import ChauffeurNet
+        from models.Dataset import DrivingDataset
+        from models.TrainUtil import train_simple_conv
         self.batch_size   = 6
         self.lr           = 0.0001
         self.shuffle      = True

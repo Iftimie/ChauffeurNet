@@ -61,7 +61,7 @@ class Vehicle(Actor):
 
         #Options about the past
         self.render_past_locations = False
-        self.render_past_locations_thickness = 2
+        self.render_past_locations_thickness = 8
         self.render_past_locations_radius = 2
 
     def get_relevant_states(self):

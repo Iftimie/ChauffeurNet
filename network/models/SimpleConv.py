@@ -1,14 +1,9 @@
 import torch
 import torch.nn as nn
-import h5py
 import numpy as np
-from torch.utils.data import Dataset
-import os
-from math import *
 import matplotlib.pyplot as plt
 from torchvision.models.resnet import ResNet,BasicBlock,model_urls
 import torch.utils.model_zoo as model_zoo
-from config import Config
 
 """
 I define here the model, the dataset format and the training procedure for this specific model,
@@ -17,21 +12,22 @@ as these are tightly coupled
 
 class FeatureExtractor(ResNet):
 
-    def __init__(self, pretrained = True):
+    def __init__(self, imagenet_trained= True):
         super(FeatureExtractor, self).__init__(BasicBlock, [2, 2, 2, 2])
         self.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
-        self.load_my_state_dict(model_zoo.load_url(model_urls['resnet18']))
+        if imagenet_trained:
+            self.load_my_state_dict(model_zoo.load_url(model_urls['resnet18']))
 
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-        x = self.maxpool(x)
+        # x = self.maxpool(x)
 
         x = self.layer1(x)
         x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        # x = self.layer3(x)
+        # x = self.layer4(x)
 
         return x
 
@@ -144,7 +140,7 @@ class ChauffeurNet(nn.Module):
     def __init__(self, config):
         super(ChauffeurNet, self).__init__()
 
-        self.feature_extractor = FeatureExtractor(pretrained=True)
+        self.feature_extractor = FeatureExtractor(imagenet_trained=True)
         self.feature_extractor.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
 
         self.steering_predictor = SteeringPredictor()
@@ -227,136 +223,4 @@ class ChauffeurNet(nn.Module):
         else:
             loss = loss - (pos_loss + neg_loss) / num_pos
         return loss
-
-class EnumIndices:
-    turn_angle_start_idx = 0
-    future_points_start_idx = 1
-    end_idx = int(future_points_start_idx + 2 * (40 / 5)) #LOOK IN Path class to know how many points there are
-
-class DrivingDataset(Dataset):
-
-    def __init__(self, hdf5_file, mode = "read", num_channels = 6):
-        """
-        Args:
-            hdf5_file (string): Path to the hdf5 file with annotations.
-        """
-        range = (-0.785398, 0.785398)
-        bins = 45
-        self.num_channels = 6
-        self.mode = mode
-
-        self.ratio = 3.333333
-
-        if mode == "read":
-            self.file = h5py.File(hdf5_file,"r", driver='core')
-            self.dset_data = self.file['data']
-            self.dset_target = self.file['labels']
-
-            hist, bin_edges = np.histogram(self.dset_target[:,EnumIndices.turn_angle_start_idx], bins=bins, range=range, density=True)
-            hist = hist / np.sum(hist)
-            self.weighting_histogram = (1 / (hist + 0.01)).astype(np.float32)
-            self.bin_edges = bin_edges
-        elif mode == "write":
-            self.file = h5py.File(hdf5_file, "w")
-            self.dset_data = self.file.create_dataset("data", (0, self.num_channels, Config.r_res[0], Config.r_res[1]), dtype=np.uint8,
-                                                         maxshape=(None, self.num_channels, Config.r_res[0], Config.r_res[1]),
-                                                         chunks=(1, self.num_channels, Config.r_res[0], Config.r_res[1]))
-            self.dset_labels = self.file.create_dataset("labels", (0, EnumIndices.end_idx), dtype=np.float32, maxshape=(None,  EnumIndices.end_idx),
-                                                           chunks=(1, EnumIndices.end_idx))
-            self.write_idx = 0
-
-    def __len__(self):
-        return self.dset_data.shape[0]
-
-    def future_penalty_map(self, points):
-
-        #TODO points received in here should be in the full resolution. when downsampled to the network output, only then I should apply the fractional part regression
-
-        scale_factor = Config.r_res[0] / Config.o_res[0]
-        points /= scale_factor
-        radius = int(ceil(20 / Config.o_ratio))
-        sigma = 0.3333 * radius
-
-
-        points = np.reshape(points,(-1,2))
-        num_points = points.shape[0]
-        future_poses = np.zeros((num_points, 1, Config.o_res[0], Config.o_res[1]))
-
-        for i in range(num_points):
-            x_i,y_i = int(points[i,0]), int(points[i,1])
-            for col in range(x_i - radius, x_i + radius):
-                for row in range(y_i - radius, y_i + radius):
-                    centred_col = col - x_i
-                    centred_row = row - y_i
-                    future_poses[i, 0, row, col] = exp(-((centred_col ** 2 + centred_row ** 2)) / (2 * sigma ** 2))
-
-        if False:
-            # fig, (ax1) = plt.subplots(1, 1)
-            # for i in range(8):
-            #     ax1.clear()
-            #     image_plot1 = ax1.imshow(np.squeeze(future_poses[i, 0, ...]))
-            #     plt.colorbar(image_plot1, ax = ax1)
-            #     plt.show()
-            for i in range(8):
-                plt.imshow(np.squeeze(future_poses[i, 0, ...]))
-                plt.show()
-        return future_poses
-
-    def __getitem__(self, idx):
-        if self.mode != "read":
-            raise ValueError ("Dataset opened with write mode")
-        data = (self.dset_data[idx,...].astype(np.float32) - 128) / 128
-        steering = self.dset_target[idx,[EnumIndices.turn_angle_start_idx]]
-        steering_bin = max(np.array([0]), min(np.digitize(steering, self.bin_edges) - 1, np.array([len(self.weighting_histogram) -1])))
-        #DONT FORGET TO ADD [] when indexing...   [len(self.weighting_histogram) -1]    tensors need the same shape
-        steering_weight = np.array(self.weighting_histogram[steering_bin])
-
-        future_penalty_maps = self.future_penalty_map(self.dset_target[idx,EnumIndices.future_points_start_idx:EnumIndices.end_idx])
-
-        sample = {'data': data, 'steering': steering, 'steering_weight':steering_weight, "future_penalty_maps": future_penalty_maps}
-        return sample
-
-    def append(self, images_concatenated, labels={}):
-        if self.mode != "write":
-            raise ValueError ("Dataset opened with read mode")
-
-        turn_angle = np.array([labels["current_turn_angle"]])
-        future_points = np.array(labels["points"]).astype(np.float32)
-        future_points = future_points.reshape((-1,))
-        stacked_labels = np.hstack((turn_angle,future_points))
-
-        self.dset_data.resize((self.write_idx + 1, self.num_channels, Config.r_res[0], Config.r_res[1]))
-        self.dset_labels.resize((self.write_idx + 1,  EnumIndices.end_idx))
-        self.dset_data[self.write_idx, ...] = images_concatenated
-        self.dset_labels[self.write_idx, ...] = stacked_labels
-        self.write_idx +=1
-
-
-
-def train_simple_conv(model, cfg, train_loader, optimizer, epoch):
-    model.train()
-    for batch_idx, sampled_batch in enumerate(train_loader):
-        data = sampled_batch['data']
-        steering_gt = sampled_batch['steering']
-        steering_weight = sampled_batch['steering_weight']
-        future_penalty_maps = sampled_batch['future_penalty_maps']
-
-        data                = data.to(cfg.device)
-        steering_gt         = steering_gt.to(cfg.device)
-        steering_weight     = steering_weight.to(cfg.device)
-        future_penalty_maps = future_penalty_maps.to(cfg.device)
-        optimizer.zero_grad()
-        steering_pred, waypoints_pred = model(data)
-
-        loss_steering = model.steering_weighted_loss(steering_gt,steering_pred)
-        loss_waypoints = model.waypoints_loss(future_penalty_maps,waypoints_pred)
-
-        loss = loss_steering + loss_waypoints
-        loss.backward()
-        optimizer.step()
-        if batch_idx % cfg.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
-            torch.save(model.state_dict(), os.path.join(cfg.checkpoints_path,"ChauffeurNet_{}_{}.pt".format(epoch,batch_idx)))
 
