@@ -15,7 +15,7 @@ def train_simple_conv(model, cfg, train_loader, optimizer, epoch):
         future_penalty_maps = future_penalty_maps.to(cfg.device)
         optimizer.zero_grad()
         steering_pred, waypoints_pred = model(data)
- 
+
         loss_steering = model.steering_weighted_loss(steering_gt,steering_pred)
         loss_waypoints = model.waypoints_loss(future_penalty_maps,waypoints_pred)
 
