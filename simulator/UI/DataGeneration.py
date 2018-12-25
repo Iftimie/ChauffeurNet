@@ -9,6 +9,7 @@ from simulator.util.Path import Path
 import atexit
 from simulator.UI.Record import EventBag
 from network.models.SimpleConv import DrivingDataset
+from config import Config
 import pickle
 import matplotlib.pyplot as plt
 
@@ -54,11 +55,11 @@ class Renderer:
         self.camera.set_transform(*cam_params)
 
     @staticmethod
-    def render_inputs_on_separate_planes(world, vehicle, path, path_idx, in_res):
-        image_lanes = np.zeros((*in_res, 3), np.uint8)
-        image_vehicle = np.zeros((*in_res, 3), np.uint8)
-        image_path = np.zeros((*in_res, 3), np.uint8)
-        image_agent_past_poses = np.zeros((*in_res, 3), np.uint8)
+    def render_inputs_on_separate_planes(world, vehicle, path, path_idx):
+        image_lanes             = np.zeros((Config.r_res[0],Config.r_res[1], 3), np.uint8)
+        image_vehicle           = np.zeros((Config.r_res[0],Config.r_res[1], 3), np.uint8)
+        image_path              = np.zeros((Config.r_res[0],Config.r_res[1], 3), np.uint8)
+        image_agent_past_poses  = np.zeros((Config.r_res[0],Config.r_res[1], 3), np.uint8)
 
         for actor in world.actors:
             if type(actor) is Camera: continue
@@ -76,7 +77,7 @@ class Renderer:
         return input_planes
 
     @staticmethod
-    def prepare_images(images, in_res, debug):
+    def prepare_images(images, debug):
 
         image_lanes = images["image_lanes"]
 
@@ -91,7 +92,7 @@ class Renderer:
 
 
 
-        image_concatenated = np.empty((6, in_res[0], in_res[1]), np.uint8)
+        image_concatenated = np.empty((6, Config.r_res[0], Config.r_res[1]), np.uint8)
         image_concatenated[0, ...] = image_lanes[...,0]
         image_concatenated[1, ...] = image_lanes[...,1]
         image_concatenated[2, ...] = image_lanes[...,2]
@@ -112,8 +113,8 @@ class Renderer:
 
         future_pose_states = {"points": [], "current_turn_angle":self.vehicle.turn_angle}
         # TODO I also have to add to the future pose states the angle prediction, or head orientation predicition
-        for i in range(int(path.num_future_poses / path.num_skip_poses)):
-            point = path.project_future_poses(self.vehicle.camera, path_idx + i * path.num_skip_poses)
+        for i in range(Config.horizon):
+            point = path.project_future_poses(self.vehicle.camera, path_idx + i * Config.num_skip_poses)
             future_pose_states["points"].append(point)
         return future_pose_states
 
@@ -121,18 +122,19 @@ class Renderer:
 
         if self.overwrite == False:return
 
-        for i in range(len(self.all_states) - self.path.num_future_poses):
+        for i in range(len(self.event_bag) - Config.num_future_poses):
 
-            self.vehicle.T = self.all_states[i][0]
+            state = self.event_bag.next_event()
+            self.vehicle.T = state["vehicle"]["T"]
             self.vehicle.append_past_location(self.vehicle.T) #TODO should refactor this so that any assignement to T updates every other dependent feature
-            self.camera.C =  self.all_states[i][1]
-            self.vehicle.next_locations = self.all_states[i][2]
-            self.vehicle.vertices_W = self.all_states[i][3]
-            self.vehicle.turn_angle = self.all_states[i][4]
+            self.camera.C =  state["vehicle"]["camera"].C
+            self.vehicle.next_locations_by_steering = state["vehicle"]["next_locations_by_steering"]
+            self.vehicle.vertices_W = state["vehicle"]["vertices_W"]
+            self.vehicle.turn_angle = state["vehicle"]["turn_angle"]
 
 
-            input_planes = Renderer.render_inputs_on_separate_planes(self.world,self.vehicle, self.path, i, self.in_res)
-            input_planes_concatenated = Renderer.prepare_images(input_planes, self.in_res, self.debug)
+            input_planes = Renderer.render_inputs_on_separate_planes(self.world,self.vehicle, self.path, i)
+            input_planes_concatenated = Renderer.prepare_images(input_planes, self.debug)
             labels = self.prepare_labels(self.path, i)
             self.dataset.append(input_planes_concatenated,labels)
 
@@ -156,7 +158,7 @@ if __name__ =="__main__":
 
     renderer = Renderer( world_path= "../../data/world.h5",
                          h5_path="../../data/pytorch_data.h5",
-                         event_bag_path="../../data/recording.h5",
+                         event_bag_path="../../data/recorded_states.pkl",
                          overwrite=True,
                          debug=False)
     # DONT FORGET TO CHANGE OVERWRITE

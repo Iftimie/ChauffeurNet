@@ -19,7 +19,7 @@ class Path(Actor):
         super().__init__()
         self.vertices_L = []
         for state in all_states:
-            coordinates6DOF = params_from_tansformation(state[0])
+            coordinates6DOF = params_from_tansformation(state["vehicle"]["T"])
             coordinates_translation = np.array([[coordinates6DOF[0],coordinates6DOF[1],coordinates6DOF[2], 1]]).T
             self.vertices_L.append(coordinates_translation) # vehicle transform
 

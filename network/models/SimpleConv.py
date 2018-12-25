@@ -325,7 +325,7 @@ class DrivingDataset(Dataset):
         future_points = future_points.reshape((-1,))
         stacked_labels = np.hstack((turn_angle,future_points))
 
-        self.dset_data.resize((self.write_idx + 1, self.num_channels, Config.r_res[0], Config.r_resv[1]))
+        self.dset_data.resize((self.write_idx + 1, self.num_channels, Config.r_res[0], Config.r_res[1]))
         self.dset_labels.resize((self.write_idx + 1,  EnumIndices.end_idx))
         self.dset_data[self.write_idx, ...] = images_concatenated
         self.dset_labels[self.write_idx, ...] = stacked_labels

@@ -14,10 +14,10 @@ class Config:
 
 
     #Temporal part
-    num_past_poses = 40
-    num_future_poses = 40
+    horizon = 8
     num_skip_poses = 5
-
+    num_past_poses = horizon * num_skip_poses
+    num_future_poses = horizon * num_skip_poses
 
     #Camera params
     cam_height = -1200

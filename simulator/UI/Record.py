@@ -47,6 +47,7 @@ class EventBag:
         else:
             self.file = open( file_path, "rb" )
             self.list_states = pickle.load(self.file)
+            self.file.close()
         self.crt_idx = 0
         atexit.register(self.cleanup)
 
@@ -58,7 +59,7 @@ class EventBag:
             raise ValueError("EventBag opened as read mode")
 
     def __len__(self):
-        return self.dset.shape[0]
+        return len(self.list_states)
 
     def next_event(self):
         if self.record == False:
@@ -72,7 +73,9 @@ class EventBag:
         self.crt_idx = 0
 
     def cleanup(self):
-        pickle.dump(self.list_states, self.file)
+        if self.record == True:
+            pickle.dump(self.list_states, self.file)
+            self.file.close()
 
 
 if __name__ =="__main__":
