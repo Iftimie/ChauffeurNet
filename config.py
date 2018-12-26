@@ -20,6 +20,7 @@ class Config:
 
 
     #Temporal part
+    test_waypoint_idx = 3
     horizon = 8
     num_skip_poses = 5
     num_past_poses = horizon * num_skip_poses

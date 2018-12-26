@@ -4,7 +4,8 @@ from torch.utils.data import Dataset
 from math import *
 import matplotlib.pyplot as plt
 from config import Config
-
+from psutil import virtual_memory
+import os
 
 class EnumIndices:
     turn_angle_start_idx = 0
@@ -26,7 +27,13 @@ class DrivingDataset(Dataset):
         self.ratio = 3.333333
 
         if mode == "read":
-            self.file = h5py.File(hdf5_file,"r", driver='core')
+            mem = virtual_memory()
+            total_memory = mem.total / (1024*1024)
+            file_size = os.path.getsize(hdf5_file) / (1024*1024)
+            if not (total_memory - 8000 > file_size):
+                self.file = h5py.File(hdf5_file,"r")
+            else:
+                self.file = h5py.File(hdf5_file, "r", driver='core')
             self.dset_data = self.file['data']
             self.dset_target = self.file['labels']
 

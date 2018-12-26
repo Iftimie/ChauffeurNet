@@ -2,6 +2,7 @@ from simulator.util.Vehicle import Vehicle
 from simulator.UI.GUI import GUI
 import pickle
 import atexit
+from config import Config
 
 class Recorder(GUI):
 
@@ -23,11 +24,10 @@ class Recorder(GUI):
             self.running = False
 
     def run(self):
-
         while self.running:
             super(Recorder, self).interpretIO_and_render()
-            self.world.simulate(self.pressed_key, GUI.mouse)
 
+            self.world.simulate(self.pressed_key, GUI.mouse)
             to_save_dict = {}
             to_save_dict["pressed_key"] = self.pressed_key
             to_save_dict["mouse"] = (GUI.mouse[0], GUI.mouse[1])

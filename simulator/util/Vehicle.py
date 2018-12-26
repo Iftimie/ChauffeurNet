@@ -1,9 +1,9 @@
-from .Actor import Actor
+from simulator.util.Actor import Actor
 import numpy as np
 from  math import *
 import cv2
 from scipy.interpolate import interp1d
-from .transform.util import rot_y
+from simulator.util.transform.util import rot_y
 import math
 from simulator.util.transform.util import params_from_tansformation
 import copy
