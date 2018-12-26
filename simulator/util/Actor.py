@@ -130,6 +130,7 @@ class Actor:
             y -= Actor.delta
         if key == 113:
             yaw -= radians(Actor.delta / 10)
+            print (yaw)
         if key == 101:
             yaw += radians(Actor.delta / 10)
         self.set_transform(x, y, z, roll, yaw, pitch)

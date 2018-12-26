@@ -8,9 +8,8 @@ from simulator.util.LaneMarking import LaneMarking
 from simulator.util.Path import Path
 import atexit
 from simulator.UI.Record import EventBag
-from network.models.SimpleConv import DrivingDataset
+from network.models.Dataset import DrivingDataset
 from config import Config
-import pickle
 import matplotlib.pyplot as plt
 
 class Renderer:

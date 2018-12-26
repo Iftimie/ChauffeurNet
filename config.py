@@ -5,6 +5,12 @@ class Config:
     # r_res = (576, 768)
     r_res = (144, 192)
     o_res = (36, 48)
+    scale_factor = r_res[0] / o_res[0]
+
+    if scale_factor == 4:
+        features_num_channels = 128
+    elif scale_factor == 8:
+        features_num_channels = 256
 
     # ratio is used to scale opencv shapes such as circles, which in general are defined in pixels, and do not depend on window size
     # or camera parameters such as focal length
@@ -18,6 +24,7 @@ class Config:
     num_skip_poses = 5
     num_past_poses = horizon * num_skip_poses
     num_future_poses = horizon * num_skip_poses
+    rnn_num_channels = 32
 
     #Camera params
     cam_height = -1200
@@ -28,3 +35,7 @@ class Config:
 
     #Google path length
     path_future_len = 250
+
+    #Outputs (don't take into account feature extractor
+    #nn_outputs=["steering","waypoints"]
+    nn_outputs=["waypoints"]

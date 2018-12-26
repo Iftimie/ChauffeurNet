@@ -42,17 +42,15 @@ class ConfigSimpleConv(Config):
         from models.Dataset import DrivingDataset
         from models.TrainUtil import train_simple_conv
         self.batch_size   = 6
-        self.lr           = 0.0001
+        self.lr           = 0.00005
         self.shuffle      = True
         self.epochs       = 100
         self.dataset      = os.path.join(root_path,"data/pytorch_data.h5")
-        self.log_interval = 10
+        self.log_interval = 30
         self.experiment_name = "whatever"
         self.paths_to_copy = [os.path.join(root_path,"network/models/SimpleConv.py"),
                               os.path.join(root_path,"network/train.py"),
                               os.path.join(root_path,"simulator")]
-
-        self.horizon      = 8
 
         self.train_loader = torch.utils.data.DataLoader(dataset = DrivingDataset(self.dataset),
                                                batch_size=self.batch_size,

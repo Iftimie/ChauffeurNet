@@ -20,27 +20,26 @@ class GUI:
             pass
         GUI.mouse = (x,y)
 
-    def mouse_on_world(self, mouse):
+    def mouse_on_world(self, mouse, camera):
         """
         Don't use the GUI.mouse variable....or maybe use it???
         http://antongerdelan.net/opengl/raycasting.html
         Given the mouse click, find the 3D point on the ground plane
         """
-        #I Don't fucking understand why I have to fucking substract mouse.x from 640. I just don't
-        mouse_homogeneous = np.array([[Config.r_res[1]-mouse[0],mouse[1],1,1]]).T
-        ray_eye = np.linalg.inv(self.camera.K).dot(mouse_homogeneous)
+        mouse_homogeneous = np.array([[mouse[0],mouse[1],1,1]]).T
+        ray_eye = np.linalg.inv(camera.K).dot(mouse_homogeneous)
+
         ray_eye[2] = 1
         ray_eye[3] = 0
-        ray_world = np.linalg.inv(self.camera.T).dot(ray_eye)
+        ray_world = camera.T.dot(ray_eye)
         ray_world = ray_world / np.linalg.norm(ray_world)
         ray_world = ray_world[:3, :]
         plane_normal = np.array([[0, -1, 0]]).T  # the plane normal is oriented towards the sky. objects up above have a - sign
-        cam_params = self.camera.get_transform()
+        cam_params = camera.get_transform()
         O = np.array([[cam_params[0], cam_params[1], cam_params[2]]]).T
 
         t = -O.T.dot(plane_normal) / ray_world.T.dot(plane_normal)
         point_on_plane = O + ray_world * t
-
         return point_on_plane
 
     def __init__(self, window_name = "", world_path=""):
@@ -78,7 +77,7 @@ class GUI:
         Will render the world, will listen for keyboard and mouse inputs
         """
         self.pressed_key = self.step()
-        GUI.mouse_world = self.mouse_on_world(GUI.mouse)
+        GUI.mouse_world = self.mouse_on_world(GUI.mouse, self.camera)
         self.interpret_key()  # will call child class method
         self.display_image = self.world.render(image=self.display_image, C=self.camera)
         cv2.imshow(self.window_name, self.display_image)

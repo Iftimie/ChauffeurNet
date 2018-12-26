@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torchvision.models.resnet import ResNet,BasicBlock,model_urls
 import torch.utils.model_zoo as model_zoo
+from config import Config
 
 """
 I define here the model, the dataset format and the training procedure for this specific model,
@@ -14,6 +15,8 @@ class FeatureExtractor(ResNet):
 
     def __init__(self, imagenet_trained= False):
         super(FeatureExtractor, self).__init__(BasicBlock, [2, 2, 2, 2])
+
+        #Resnet needs to reinitialize the firt convolution layer from 3 channels (RGB) to 6 channels (rendering planes)
         self.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         if imagenet_trained:
             self.load_my_state_dict(model_zoo.load_url(model_urls['resnet18']))
@@ -24,9 +27,18 @@ class FeatureExtractor(ResNet):
         x = self.relu(x)
         # x = self.maxpool(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        # x = self.layer3(x)
+        if Config.scale_factor == 2:
+            x = self.layer1(x)
+            return x
+        elif Config.scale_factor == 4:
+            x = self.layer1(x)
+            x = self.layer2(x)
+            return x
+        elif Config.scale_factor == 8:
+            x = self.layer1(x)
+            x = self.layer2(x)
+            x = self.layer3(x)
+            return x
         # x = self.layer4(x)
 
         return x
@@ -48,7 +60,7 @@ class FeatureExtractor(ResNet):
 
 class SteeringPredictor(nn.Module):
 
-    def __init__(self, hidden_size = 128 * 36 * 48):
+    def __init__(self, hidden_size = Config.features_num_channels * Config.o_res[0] * Config.o_res[1]):
         super(SteeringPredictor, self).__init__()
 
         self.hidden_size = hidden_size
@@ -77,7 +89,7 @@ class WaypointHeatmap(nn.Module):
     def __init__(self):
         super(WaypointHeatmap, self).__init__()
 
-        self.conv1 = self.conv_block(32,1)
+        self.conv1 = self.conv_block(Config.rnn_num_channels,1)
         self.activation = nn.Softmax(dim=-1) # we want to do a spatial softmax
 
     def forward(self, x):
@@ -105,14 +117,14 @@ class AgentRNN(nn.Module):
         super(AgentRNN, self).__init__()
 
         self.config             = config
-        self.f2h                = nn.Conv2d(in_channels=128 , out_channels=32, kernel_size=3, padding=1) #feature      to hidden   required shape
+        self.f2h                = nn.Conv2d(in_channels=Config.features_num_channels  , out_channels=Config.rnn_num_channels, kernel_size=3, padding=1) #feature      to hidden   required shape
         self.rel_f2h            = nn.ReLU()
-        self.f2i                = nn.Conv2d(in_channels=128 , out_channels=32, kernel_size=3, padding=1) #feature      to input    required shape
+        self.f2i                = nn.Conv2d(in_channels=Config.features_num_channels  , out_channels=Config.rnn_num_channels, kernel_size=3, padding=1) #feature      to input    required shape
         self.rel_f2i            = nn.ReLU()
 
-        self.i2h                = nn.Conv2d(in_channels=32 , out_channels=32, kernel_size=3, padding=1) #waypoint     to hidden   required shape
+        self.i2h                = nn.Conv2d(in_channels=Config.rnn_num_channels , out_channels=Config.rnn_num_channels, kernel_size=3, padding=1) #waypoint     to hidden   required shape
         self.rel_i2h            = nn.ReLU()
-        self.h2h                = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding=1) #hidded       to hidden   required shape
+        self.h2h                = nn.Conv2d(in_channels=Config.rnn_num_channels, out_channels=Config.rnn_num_channels, kernel_size=3, padding=1) #hidded       to hidden   required shape
         self.rel_h2h            = nn.ReLU()
         self.tan                = nn.Tanh()
         self.waypoint_predictor = WaypointHeatmap()
@@ -126,7 +138,7 @@ class AgentRNN(nn.Module):
         x_t = self.rel_f2i(x_t)
 
         future_waypoints = []
-        for i in range(self.config.horizon):
+        for i in range(Config.horizon):
             WihXt    = self.i2h(x_t)
             WihXt    = self.rel_i2h(WihXt)
 
@@ -147,18 +159,24 @@ class ChauffeurNet(nn.Module):
         super(ChauffeurNet, self).__init__()
 
         self.feature_extractor = FeatureExtractor(imagenet_trained=True)
-        self.steering_predictor = SteeringPredictor()
-        self.agent_rnn = AgentRNN(config)
+        if "steering" in Config.nn_outputs:
+            self.steering_predictor = SteeringPredictor()
+        if "waypoints" in Config.nn_outputs:
+            self.agent_rnn = AgentRNN(config)
 
         self.criterion_steering = nn.MSELoss(reduction='none')
 
 
     def forward(self, x):
         features = self.feature_extractor(x)
-        steering = self.steering_predictor(features)
-        waypoints = self.agent_rnn(features)
 
-        return steering, waypoints
+        nn_outputs = {}
+        if "steering" in Config.nn_outputs:
+            nn_outputs["steering"] = self.steering_predictor(features)
+        if "waypoints" in Config.nn_outputs:
+            nn_outputs["waypoints"] = self.agent_rnn(features)
+
+        return nn_outputs
 
     def process_waypoints(self, waypoints_pred):
 
@@ -168,6 +186,7 @@ class ChauffeurNet(nn.Module):
         m = waypoints_pred.view(n, -1).argmax(1).view(-1, 1)
         indices = torch.cat((m // d, m % d), dim=1)
         indices = indices.cpu().numpy()
+        indices *= int(Config.scale_factor)
         # This way it gets y and x
 
         if False:
@@ -219,5 +238,18 @@ class ChauffeurNet(nn.Module):
             loss = loss - neg_loss
         else:
             loss = loss - (pos_loss + neg_loss) / num_pos
+        return loss
+
+    def compute_loss(self, nn_outputs, sampled_batch, cfg):
+        steering_gt = sampled_batch['steering'].to(cfg.device)
+        steering_weight = sampled_batch['steering_weight'].to(cfg.device)
+        future_penalty_maps = sampled_batch['future_penalty_maps'].to(cfg.device)
+
+        loss = 0
+        if "steering" in nn_outputs:
+            loss += self.steering_weighted_loss(steering_gt, nn_outputs["steering"])
+        if "waypoints" in nn_outputs:
+            loss += self.waypoints_loss(future_penalty_maps, nn_outputs["waypoints"])
+
         return loss
 

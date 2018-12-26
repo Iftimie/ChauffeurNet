@@ -115,7 +115,7 @@ class Camera(Actor):
         else:
             self.K = self.create_K(self.cam_config)
             self.project = self.project_perspective
-        self.C = self.create_cammera_matrix4x4(self.T, self.K)
+        self.C = self.create_cammera_matrix(self.T, self.K)
 
     #@Override
     def set_active(self):
