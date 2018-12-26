@@ -131,7 +131,7 @@ class Renderer:
             self.vehicle.vertices_W = state["vehicle"]["vertices_W"]
             self.vehicle.turn_angle = state["vehicle"]["turn_angle"]
 
-
+            self.path.apply_dropout(i)
             input_planes = Renderer.render_inputs_on_separate_planes(self.world,self.vehicle, self.path, i)
             input_planes_concatenated = Renderer.prepare_images(input_planes, self.debug)
             labels = self.prepare_labels(self.path, i)
@@ -159,7 +159,7 @@ if __name__ =="__main__":
                          h5_path="../../data/pytorch_data.h5",
                          event_bag_path="../../data/recorded_states.pkl",
                          overwrite=True,
-                         debug=False)
+                         debug=True)
     # DONT FORGET TO CHANGE OVERWRITE
     renderer.render()
     # renderer.visualize()

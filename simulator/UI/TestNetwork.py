@@ -60,9 +60,9 @@ class Simulator(GUI):
                 proj_waypoints_3D = self.vehicle.camera.project(waypoints_3D)
 
 
-                self.vehicle.simulate(key, None)
-                # self.vehicle.simulate(key, mouse)
-                self.vehicle.simulate_given_waypoint(x=waypoints_3D[0][Config.test_waypoint_idx], z = waypoints_3D[1][Config.test_waypoint_idx], yaw=None, mouse= None)
+                self.vehicle.simulate(key, mouse)
+                # self.vehicle.simulate(key, None)
+                # self.vehicle.simulate_given_waypoint(x=waypoints_3D[0][Config.test_waypoint_idx], z = waypoints_3D[1][Config.test_waypoint_idx], yaw=None, mouse= None)
 
                 image_test_nn = self.world.render(image=image_test_nn, C=self.vehicle.camera)
                 for i in range(len(waypoints_2D)):
