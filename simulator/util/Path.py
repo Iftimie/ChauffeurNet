@@ -111,7 +111,7 @@ class Path(Actor):
         tiled_perpendicular = np.tile(perpendicular, (1,total))
 
         sigma = (1/3 * half_len)
-        amplitude = random.uniform(0.5/10, 2/10) * length
+        amplitude = random.uniform(*Config.amplitude_range) * length
         weights = np.linspace(-half_len,half_len,total)
 
         gauss = lambda x, mu, sig : np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))

@@ -7,6 +7,8 @@ class Config:
     o_res = (36, 48)
     scale_factor = r_res[0] / o_res[0]
 
+    if scale_factor ==2:
+        features_num_channels = 64
     if scale_factor == 4:
         features_num_channels = 128
     elif scale_factor == 8:
@@ -20,9 +22,9 @@ class Config:
 
 
     #Temporal part
-    test_waypoint_idx = 3
+    test_waypoint_idx = 2
     horizon = 8
-    num_skip_poses = 10
+    num_skip_poses = 14
     num_past_poses = horizon * num_skip_poses
     num_future_poses = horizon * num_skip_poses
     rnn_num_channels = 32
@@ -43,4 +45,5 @@ class Config:
 
     #Dropout
     num_frames = 70
-    dropout_prob = 0.2
+    dropout_prob = 0.5
+    amplitude_range = (0.5/10, 2/10)

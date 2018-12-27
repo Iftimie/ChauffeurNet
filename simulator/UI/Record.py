@@ -2,6 +2,7 @@ from simulator.util.Vehicle import Vehicle
 from simulator.UI.GUI import GUI
 import pickle
 import atexit
+from simulator.util.Camera import Camera
 from config import Config
 
 class Recorder(GUI):
@@ -37,8 +38,28 @@ class Recorder(GUI):
 
         print ("Game over")
 
+import threading
+import functools
+import time
+def synchronized(wrapped):
+    lock = threading.Lock()
+    # print lock, id(lock)
+    @functools.wraps(wrapped)
+    def _wrap(*args, **kwargs):
+        with lock:
+            print ("Calling '%s' with Lock %s from thread %s [%s]"
+                   % (wrapped.__name__, id(lock),
+                   threading.current_thread().name, time.time()))
+            result = wrapped(*args, **kwargs)
+            print ("Done '%s' with Lock %s from thread %s [%s]"
+                   % (wrapped.__name__, id(lock),
+                   threading.current_thread().name, time.time()))
+            return result
+    return _wrap
+
 class EventBag:
 
+    @synchronized
     def __init__(self, file_path, record = True):
         self.record = record
         if record == True:
@@ -64,13 +85,30 @@ class EventBag:
     def next_event(self):
         if self.record == False:
             event = self.list_states[self.crt_idx]
+
+            #update camera matrix, since recording could have been at another resolution
+            camera = event["vehicle"]["camera"]
+            camera.K = camera.create_K(Camera.cam_config)
+            camera.C = camera.create_cammera_matrix(camera.T,camera.K)
+            event["vehicle"]["camera"]= camera
             self.crt_idx +=1
         else:
             raise ValueError("EventBag opened as write mode")
         return event
 
     def __getitem__(self, idx):
-        return self.list_states[idx]
+        if self.record == False:
+            event = self.list_states[idx]
+
+            # update camera matrix, since recording could have been at another resolution
+            camera = event["vehicle"]["camera"]
+            camera.K = camera.create_K(Camera.cam_config)
+            camera.C = camera.create_cammera_matrix(camera.T, camera.K)
+            event["vehicle"]["camera"] = camera
+
+        else:
+            raise ValueError("EventBag opened as write mode")
+        return event
 
     def reset(self):
         self.crt_idx = 0

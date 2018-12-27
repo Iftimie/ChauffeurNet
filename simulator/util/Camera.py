@@ -3,6 +3,10 @@ import numpy as np
 from config import Config
 
 class Camera(Actor):
+
+    cam_config = {"img_h": Config.r_res[0], "img_w": Config.r_res[1], "f_cm": 0.238 / Config.r_ratio,
+                  "pixel_width_cm": 0.0003}
+
     def __init__(self):
         """
         :param cam_config: dictionary containing image width, image height, focal length in centimeters, pixel_width in centimeters
@@ -10,9 +14,8 @@ class Camera(Actor):
         T = transformation matrix in world coordinates R * t
         """
         super().__init__()
-        self.cam_config = {"img_h": Config.r_res[0], "img_w": Config.r_res[1],  "f_cm": 0.238 /Config.r_ratio, "pixel_width_cm": 0.0003 }
 
-        self.K = self.create_K(self.cam_config)
+        self.K = self.create_K(Camera.cam_config)
         self.set_transform(x=0, y=Config.cam_height, z=0, roll=0, yaw=0, pitch=-1.5708)
 
         self.project = self.project_perspective

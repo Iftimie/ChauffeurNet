@@ -54,8 +54,7 @@ class DrivingDataset(Dataset):
 
         #TODO points received in here should be in the full resolution. when downsampled to the network output, only then I should apply the fractional part regression
 
-        scale_factor = Config.r_res[0] / Config.o_res[0]
-        points = points / scale_factor
+        points = points / Config.scale_factor
         radius = int(ceil(20 / Config.o_ratio))
         sigma = 0.3333 * radius
 
@@ -66,6 +65,10 @@ class DrivingDataset(Dataset):
 
         for i in range(num_points):
             x_i,y_i = int(points[i,0]), int(points[i,1])
+            if x_i > Config.o_res[1] - radius:continue
+            if x_i < radius:continue
+            if y_i > Config.o_res[0] - radius:continue
+            if y_i < radius:continue
             for col in range(x_i - radius, x_i + radius):
                 for row in range(y_i - radius, y_i + radius):
                     centred_col = col - x_i
@@ -92,6 +95,7 @@ class DrivingDataset(Dataset):
         self.vehicle.next_locations_by_steering = state["vehicle"]["next_locations_by_steering"]
         self.vehicle.vertices_W = state["vehicle"]["vertices_W"]
         self.vehicle.turn_angle = state["vehicle"]["turn_angle"]
+        self.vehicle.set_transform(*self.vehicle.get_transform())
 
         self.path.apply_dropout(idx, self.vehicle)
 

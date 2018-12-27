@@ -13,6 +13,26 @@ import h5py
 import numpy as np
 import importlib
 
+
+import threading
+import functools
+import time
+def synchronized(wrapped):
+    lock = threading.Lock()
+    # print lock, id(lock)
+    @functools.wraps(wrapped)
+    def _wrap(*args, **kwargs):
+        with lock:
+            print ("Calling '%s' with Lock %s from thread %s [%s]"
+                   % (wrapped.__name__, id(lock),
+                   threading.current_thread().name, time.time()))
+            result = wrapped(*args, **kwargs)
+            print ("Done '%s' with Lock %s from thread %s [%s]"
+                   % (wrapped.__name__, id(lock),
+                   threading.current_thread().name, time.time()))
+            return result
+    return _wrap
+
 class World(Actor):
 
     def __init__(self, actors = [], world_path = "" ):
@@ -22,8 +42,9 @@ class World(Actor):
         pass
 
     #@Override
-    def render(self, image = None, C = None):
-        image.fill(0)
+    def render(self, image = None, C = None, reset_image=True):
+        if reset_image:
+            image.fill(0)
         for actor in self.actors:
             image = actor.render(image, C)
         return image
@@ -80,6 +101,7 @@ class World(Actor):
             self.actors.append(camera)
         return camera
 
+    @synchronized
     def load_world(self):
         if not os.path.exists(self.save_path):
             raise ("No world available")

@@ -6,8 +6,8 @@ from simulator.util.Path import Path
 import torch
 from simulator.UI.GUI import GUI
 from simulator.UI.Record import EventBag
-from simulator.UI.DataGeneration import Renderer
 from network.train import Config as TrainingConfig
+from network.models.Dataset import DrivingDataset
 from config import Config
 
 class Simulator(GUI):
@@ -19,7 +19,7 @@ class Simulator(GUI):
 
         #event_bag represents the data that the user generated. Has values such as the key pressed, and mouse
         self.event_bag = EventBag(event_bag_path, record=False)
-        self.path = Path(self.event_bag.list_states)
+        self.path = Path(self.event_bag.list_states,debug=False)
         self.network_path = network_path
 
 
@@ -36,14 +36,14 @@ class Simulator(GUI):
         image_test_nn = np.zeros((Config.r_res[0], Config.r_res[1], 3), np.uint8)
 
         with torch.no_grad():
-            for i in range(len(self.event_bag)):
+            for i in range(self.path.vertices_W.shape[1]):
                 state = self.event_bag.next_event()
                 key,mouse = state["pressed_key"], state["mouse"]
                 self.camera = state["vehicle"]["camera"]
                 self.world.camera = state["vehicle"]["camera"]
 
-                input_planes = Renderer.render_inputs_on_separate_planes(self.world,self.vehicle,self.path,i)
-                input_planes_concatenated = Renderer.prepare_images(input_planes, debug = False)
+                input_planes = DrivingDataset.render_inputs_on_separate_planes(self.world,self.vehicle,self.path,i)
+                input_planes_concatenated = DrivingDataset.prepare_images(input_planes, debug = False)
                 input_planes_concatenated = input_planes_concatenated[np.newaxis]
                 input_planes_concatenated = torch.from_numpy((input_planes_concatenated.astype(np.float32) - 128) / 128).to(config.device)
 
@@ -60,14 +60,21 @@ class Simulator(GUI):
                 proj_waypoints_3D = self.vehicle.camera.project(waypoints_3D)
 
 
-                self.vehicle.simulate(key, mouse)
-                # self.vehicle.simulate(key, None)
-                # self.vehicle.simulate_given_waypoint(x=waypoints_3D[0][Config.test_waypoint_idx], z = waypoints_3D[1][Config.test_waypoint_idx], yaw=None, mouse= None)
+                # self.vehicle.simulate(key, mouse)
+                self.vehicle.interpret_key(key)
+                self.vehicle.simulate_given_waypoint(x=waypoints_3D[0][Config.test_waypoint_idx], z = waypoints_3D[2][Config.test_waypoint_idx], yaw=None, mouse= None)
 
-                image_test_nn = self.world.render(image=image_test_nn, C=self.vehicle.camera)
-                for i in range(len(waypoints_2D)):
-                    image_test_nn = cv2.circle(image_test_nn,(waypoints_2D[i,1],waypoints_2D[i,0]),radius=1,color = (0,0+i*30,0),thickness=1)
-                    image_test_nn = cv2.circle(image_test_nn, (proj_waypoints_3D[0][i], proj_waypoints_3D[1][i]), radius=2,color=(255, 0 + i * 30, 0), thickness=2)
+                self.vehicle.c = (0,0,200)
+                image_test_nn.fill(0)
+                image_test_nn = self.path.render(image_test_nn, C=self.vehicle.camera, path_idx=i)
+                image_test_nn = self.world.render(image=image_test_nn, C=self.vehicle.camera, reset_image=False)
+                self.vehicle.c = (200,200,200)
+                print (i)
+                for j in range(len(waypoints_2D)):
+                    image_test_nn = cv2.circle(image_test_nn,(waypoints_2D[j,1],waypoints_2D[j,0]),radius=1,color = (0,0+i*30,0),thickness=1)
+                    image_test_nn = cv2.circle(image_test_nn, (proj_waypoints_3D[0][j], proj_waypoints_3D[1][j]), radius=2,color=(255, 0 + j * 30, 0), thickness=2)
+
+
 
                 cv2.imshow("Simulator", image_test_nn)
                 # cv2.imshow("input", input_to_network)
