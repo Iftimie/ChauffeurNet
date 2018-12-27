@@ -59,10 +59,7 @@ class Vehicle(Actor):
         self.is_active = True
         self.render_next_locations_by_steering = False
 
-        #Options about the past
-        self.render_past_locations = False
-        self.render_past_locations_thickness = 8
-        self.render_past_locations_radius = 2
+
 
     def get_relevant_states(self):
         #It should contain only primitive datatypes, numpy arrays, lists of numpy arrays, no other User defined class
@@ -85,23 +82,13 @@ class Vehicle(Actor):
                 image = cv2.circle(image, (x[i], y[i]), radius , (0, 0, 255),thick)
         return image
 
-    def render_past_locations_func(self, image, C):
-        if len(self.past_locations) > 0:
-            array_past_locations = np.array(self.past_locations[::Config.num_skip_poses]).T
-            x, y = C.project(array_past_locations)
-            for i in range(0, len(x)):
-                thick = int(ceil(self.render_past_locations_thickness / Config.r_ratio))
-                radius = int(self.render_past_locations_radius / Config.r_ratio)
-                image = cv2.circle(image, (x[i], y[i]), radius, (0, 0, 255),thick )
-        return image
+
 
     #@Override
     def render(self, image, C):
         image = super(Vehicle, self).render(image, C)
         if self.render_next_locations_by_steering == True:
             image = self.render_next_locations_by_steering_func(image,C)
-        if self.render_past_locations == True:
-            image = self.render_past_locations_func(image,C)
 
         return image
 
@@ -181,21 +168,32 @@ class Vehicle(Actor):
 
         self.set_transform(x, y, z, roll, yaw, pitch)
 
+
+    def set_camera_relative_transform(self,x=None, y=None, z=None, roll=None, yaw=None, pitch=None):
+        current_params = params_from_tansformation(self.T)
+        if x is None: x = current_params[0]
+        if y is None: y = current_params[1]
+        if z is None: z = current_params[2]
+        if roll is None: roll = current_params[3]
+        if yaw is None: yaw = current_params[4]
+        if pitch is None: pitch = current_params[5]
+
         x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.camera.get_transform()
         rotated_displacement_vector = rot_y(yaw - pi).dot(self.displacement_vector)
         x += rotated_displacement_vector[0]
         z += rotated_displacement_vector[2]
         self.camera.set_transform(x, y_c, z, roll_c, yaw, pitch_c)
 
+    def set_transform(self, x=None, y=None, z=None, roll=None, yaw=None, pitch=None):
+        super(Vehicle, self).set_transform(x,y,z,roll,yaw, pitch)
+        self.set_camera_relative_transform(x,y,z,roll,yaw, pitch)
+
     def simulate(self, key_pressed, mouse):
         self.interpret_key(key_pressed)
         self.interpret_mouse(mouse)
         self.update_parameters()
 
-    def simulate_given_waypoint(self, x,z,yaw, mouse):
-        """
-        This method should not modify the speed, it will update the position and the orientation, given the desired location and orientation
-        """
+    def compute_turn_angle(self, x,z,yaw, mouse):
         if self.speed == 0:
             return
         x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.get_transform()
@@ -223,5 +221,11 @@ class Vehicle(Actor):
         #I don't fucking know why it has to be multiplied by 2 but it works
         self.turn_angle = next_turn_angle
 
+    def simulate_given_waypoint(self, x,z,yaw, mouse):
+        """
+        This method should not modify the speed, it will update the position and the orientation, given the desired location and orientation
+        """
+
+        self.compute_turn_angle(x,z,yaw,mouse)
         self.update_parameters()
 

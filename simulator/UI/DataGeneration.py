@@ -42,80 +42,11 @@ class Renderer:
         if self.dataset !=None:
             self.dataset.file.close()
 
-    def add_noise_over_camera(self):
-        def get_sin_noise():
-            noise = np.sin(self.iter / 10)  # * 5 (increase amplitude)
-            return noise
-        cam_params = list(self.camera.get_transform())
-        noise = get_sin_noise()
-        #cam_params[0] += noise * 10 #x
-        #cam_params[2] += noise * 10 #z
-        cam_params[4] += noise / 20 #yaw
-        self.camera.set_transform(*cam_params)
-
-    @staticmethod
-    def render_inputs_on_separate_planes(world, vehicle, path, path_idx):
-        image_lanes             = np.zeros((Config.r_res[0],Config.r_res[1], 3), np.uint8)
-        image_vehicle           = np.zeros((Config.r_res[0],Config.r_res[1], 3), np.uint8)
-        image_path              = np.zeros((Config.r_res[0],Config.r_res[1], 3), np.uint8)
-        image_agent_past_poses  = np.zeros((Config.r_res[0],Config.r_res[1], 3), np.uint8)
-
-        for actor in world.actors:
-            if type(actor) is Camera: continue
-            if type(actor) is LaneMarking:
-                image_lanes = actor.render(image_lanes, vehicle.camera)
-        image_vehicle = vehicle.render(image_vehicle, vehicle.camera)
-        image_path = path.render(image_path, vehicle.camera, path_idx)
-        image_agent_past_poses = vehicle.render_past_locations_func(image_agent_past_poses, vehicle.camera)
-        # image_lanes = self.vehicle.render(image_lanes, self.camera)
-
-        input_planes = {"image_lanes":image_lanes,
-                         "image_vehicle": image_vehicle,
-                         "image_path": image_path,
-                         "image_agent_past_poses":image_agent_past_poses}
-        return input_planes
-
-    @staticmethod
-    def prepare_images(images, debug):
-
-        image_lanes = images["image_lanes"]
-
-        image_vehicle = images["image_vehicle"]
-        image_vehicle = cv2.cvtColor(image_vehicle, cv2.COLOR_BGR2GRAY)
-
-        image_path = images["image_path"]
-        image_path = cv2.cvtColor(image_path, cv2.COLOR_BGR2GRAY)
-
-        image_agent_past_poses = images["image_agent_past_poses"]
-        image_agent_past_poses = cv2.cvtColor(image_agent_past_poses , cv2.COLOR_BGR2GRAY)
 
 
 
-        image_concatenated = np.empty((6, Config.r_res[0], Config.r_res[1]), np.uint8)
-        image_concatenated[0, ...] = image_lanes[...,0]
-        image_concatenated[1, ...] = image_lanes[...,1]
-        image_concatenated[2, ...] = image_lanes[...,2]
-        image_concatenated[3, ...] = image_vehicle
-        image_concatenated[4, ...] = image_path
-        image_concatenated[5, ...] = image_agent_past_poses
-        #TODO add the future pose here
 
-        if debug:
-            cv2.imshow("image1", image_lanes)
-            cv2.imshow("image4", image_vehicle)
-            cv2.imshow("image5", image_path)
-            cv2.imshow("image6", image_agent_past_poses)
-            cv2.waitKey(33)
-        return image_concatenated
 
-    def prepare_labels(self, path, path_idx):
-
-        future_pose_states = {"points": [], "current_turn_angle":self.vehicle.turn_angle}
-        # TODO I also have to add to the future pose states the angle prediction, or head orientation predicition
-        for i in range(Config.horizon):
-            point = path.project_future_poses(self.vehicle.camera, path_idx + i * Config.num_skip_poses)
-            future_pose_states["points"].append(point)
-        return future_pose_states
 
     def render(self):
 

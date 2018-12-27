@@ -242,7 +242,6 @@ class ChauffeurNet(nn.Module):
 
     def compute_loss(self, nn_outputs, sampled_batch, cfg):
         steering_gt = sampled_batch['steering'].to(cfg.device)
-        steering_weight = sampled_batch['steering_weight'].to(cfg.device)
         future_penalty_maps = sampled_batch['future_penalty_maps'].to(cfg.device)
 
         loss = 0

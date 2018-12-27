@@ -41,18 +41,21 @@ class ConfigSimpleConv(Config):
         from models.SimpleConv import ChauffeurNet
         from models.Dataset import DrivingDataset
         from models.TrainUtil import train_simple_conv
-        self.batch_size   = 6
-        self.lr           = 0.00005
-        self.shuffle      = True
-        self.epochs       = 100
-        self.dataset      = os.path.join(root_path,"data/pytorch_data.h5")
-        self.log_interval = 30
+        self.batch_size     = 6
+        self.lr             = 0.00005
+        self.shuffle        = True
+        self.epochs         = 100
+        self.event_bag_path = os.path.join(root_path,"data/recorded_states.pkl")
+        self.world_path     = os.path.join(root_path,"data/world.h5")
+        self.log_interval   = 30
         self.experiment_name = "whatever"
         self.paths_to_copy = [os.path.join(root_path,"network/models/SimpleConv.py"),
                               os.path.join(root_path,"network/train.py"),
                               os.path.join(root_path,"simulator")]
 
-        self.train_loader = torch.utils.data.DataLoader(dataset = DrivingDataset(self.dataset),
+        self.train_loader = torch.utils.data.DataLoader(dataset = DrivingDataset(event_bag_path=self.event_bag_path,
+                                                                                 world_path=self.world_path,
+                                                                                 debug=True),
                                                batch_size=self.batch_size,
                                                shuffle=self.shuffle)
         self.model = ChauffeurNet(config = self).to(self.device)

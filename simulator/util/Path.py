@@ -34,6 +34,11 @@ class Path(Actor):
         self.dropout_cached_vertices = None
         self.sign = 1
 
+        # Options about the past
+        self.render_past_locations = False
+        self.render_past_locations_thickness = 8
+        self.render_past_locations_radius = 2
+
     def render(self, image, C, path_idx):
         """
         :param image: image on which this actor will be renderd on
@@ -54,38 +59,46 @@ class Path(Actor):
                 image = cv2.polylines(image, [pts], False, color=self.c,thickness= thick)
 
         if self.dropout_cached_vertices  is not None:
-            x, y = C.project(self.dropout_cached_vertices)
+            selected_for_projection = self.dropout_cached_vertices[:, path_idx:path_idx + Config.num_frames]
+            x, y = C.project(selected_for_projection)
             for i in range(0, len(x)):
                 image = cv2.circle(image, (x[i], y[i]), 0, (0, 0, 255),0 )
         return image
 
-    def project_future_poses(self, C, path_idx):
+    def project_future_poses(self, C, current_path_idx, future_waypoint):
 
-        if self.vertices_W.shape[1] > 1:
-            selected_for_projection = self.vertices_W[:, [path_idx]]
+        if self.dropout_cached_vertices is None:
+            if self.vertices_W.shape[1] > 1:
+                selected_for_projection = self.vertices_W[:, [current_path_idx+future_waypoint]]
+                x, y = C.project(selected_for_projection)
+                if len(x) !=1:
+                    raise ValueError("too many points. there is a problem")
+                return [x,y]
+        else:
+            selected_for_projection = self.dropout_cached_vertices[:, [current_path_idx+future_waypoint]]
             x, y = C.project(selected_for_projection)
-            if len(x) !=1:
+            if len(x) != 1:
                 raise ValueError("too many points. there is a problem")
-            return [x,y]
+            return [x, y]
 
-    def apply_dropout(self, path_idx):
+    def apply_dropout(self, path_idx, vehicle):
+        if not( path_idx > Config.num_frames and path_idx < self.vertices_W.shape[1] - Config.num_frames):return
 
-        num_frames = 70
-        total = num_frames * 2 + 1
+        if random.uniform(0.0,1.0) > Config.dropout_prob:
+            self.dropout_cached_vertices = None
+            return
+
+        total = Config.num_frames * 2 + 1
         if path_idx % 300 ==0:
             self.sign *=-1
 
-
-        if not( path_idx > num_frames and path_idx < self.vertices_W.shape[1] - num_frames):return
-
         #cache modifications
-        self.dropout_cached_vertices = self.vertices_W[:,path_idx-num_frames:path_idx+num_frames +1].copy()
-        print (self.dropout_cached_vertices.shape[1])
-        self.dropout_idx = path_idx
+        cached_vertices = self.vertices_W[:,path_idx-Config.num_frames:path_idx+Config.num_frames +1].copy()
 
         #apply modification
+        heading = cached_vertices[:,-1] - cached_vertices[:,0]
 
-        heading = self.dropout_cached_vertices[:,-1] - self.dropout_cached_vertices[:,0]
+
         length = np.linalg.norm(heading)
         half_len = length / 2
         # https://gamedev.stackexchange.com/questions/70075/how-can-i-find-the-perpendicular-to-a-2d-vector
@@ -102,7 +115,33 @@ class Path(Actor):
         weights = gauss(weights,0,sigma) * amplitude
 
         tiled_perpendicular = tiled_perpendicular * weights
-        self.dropout_cached_vertices[:3,:] +=tiled_perpendicular[:3,:]
+        cached_vertices[:3,:] +=tiled_perpendicular[:3,:]
+
+        yaw = atan2(heading[0], heading[2])
+        x,y,z = cached_vertices[0,Config.num_frames],cached_vertices[1,Config.num_frames],cached_vertices[2,Config.num_frames]
+        vehicle.set_transform(x=x,y=y,z=z,yaw=yaw)
+
+        self.dropout_cached_vertices = self.vertices_W.copy()
+        self.dropout_cached_vertices[:,path_idx-Config.num_frames:path_idx+Config.num_frames +1] = cached_vertices
 
         return
 
+    def render_past_locations_func(self, image, C, path_idx):
+
+        if self.dropout_cached_vertices is None:
+            if self.vertices_W.shape[1] > 1:
+                array_past_locations = self.vertices_W[:, path_idx-Config.num_frames:path_idx:Config.num_skip_poses]
+                x, y = C.project(array_past_locations)
+                for i in range(0, len(x)):
+                    thick = int(ceil(self.render_past_locations_thickness / Config.r_ratio))
+                    radius = int(self.render_past_locations_radius / Config.r_ratio)
+                    image = cv2.circle(image, (x[i], y[i]), radius, (0, 0, 255), thick)
+        else:
+            array_past_locations = self.dropout_cached_vertices[:, path_idx-Config.num_frames:path_idx:Config.num_skip_poses]
+            x, y = C.project(array_past_locations)
+            for i in range(0, len(x)):
+                thick = int(ceil(self.render_past_locations_thickness / Config.r_ratio))
+                radius = int(self.render_past_locations_radius / Config.r_ratio)
+                image = cv2.circle(image, (x[i], y[i]), radius, (0, 0, 255),thick )
+
+        return image

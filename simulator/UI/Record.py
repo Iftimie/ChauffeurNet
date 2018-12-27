@@ -69,6 +69,9 @@ class EventBag:
             raise ValueError("EventBag opened as write mode")
         return event
 
+    def __getitem__(self, idx):
+        return self.list_states[idx]
+
     def reset(self):
         self.crt_idx = 0
 

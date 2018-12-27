@@ -40,3 +40,7 @@ class Config:
     #Outputs (don't take into account feature extractor
     #nn_outputs=["steering","waypoints"]
     nn_outputs=["waypoints"]
+
+    #Dropout
+    num_frames = 70
+    dropout_prob = 1
