@@ -8,7 +8,7 @@ from config import Config
 
 class Path(Actor):
 
-    def __init__(self, all_states):
+    def __init__(self, all_states, debug ):
         """
         transform: 4x4 matrix to transform from local system to world system
         vertices_L: point locations expressed in local coordinate system in centimeters. vertices matrix will have shape
@@ -18,6 +18,7 @@ class Path(Actor):
         """
         super().__init__()
         self.vertices_L = []
+        self.debug = debug
         for state in all_states:
             coordinates6DOF = params_from_tansformation(state["vehicle"]["T"])
             coordinates_translation = np.array([[coordinates6DOF[0],coordinates6DOF[1],coordinates6DOF[2], 1]]).T
@@ -58,7 +59,7 @@ class Path(Actor):
                 thick = int(ceil(self.render_thickness / Config.r_ratio))
                 image = cv2.polylines(image, [pts], False, color=self.c,thickness= thick)
 
-        if self.dropout_cached_vertices  is not None:
+        if self.dropout_cached_vertices  is not None and self.debug == True:
             selected_for_projection = self.dropout_cached_vertices[:, path_idx:path_idx + Config.num_frames]
             x, y = C.project(selected_for_projection)
             for i in range(0, len(x)):
@@ -89,8 +90,10 @@ class Path(Actor):
             return
 
         total = Config.num_frames * 2 + 1
-        if path_idx % 300 ==0:
-            self.sign *=-1
+
+        #TODO check what to do with the sign...how many times should we alternate?
+        # if path_idx % 300 ==0:
+        self.sign *=-1
 
         #cache modifications
         cached_vertices = self.vertices_W[:,path_idx-Config.num_frames:path_idx+Config.num_frames +1].copy()

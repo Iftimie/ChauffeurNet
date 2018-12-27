@@ -32,7 +32,7 @@ class DrivingDataset(Dataset):
         self.world.actors.append(self.vehicle)
 
         self.event_bag = EventBag(event_bag_path, record=False)
-        self.path = Path(self.event_bag.list_states)
+        self.path = Path(self.event_bag.list_states, debug=debug)
 
         self.num_channels = 6
 

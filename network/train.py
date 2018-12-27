@@ -47,7 +47,7 @@ class ConfigSimpleConv(Config):
         self.epochs         = 100
         self.event_bag_path = os.path.join(root_path,"data/recorded_states.pkl")
         self.world_path     = os.path.join(root_path,"data/world.h5")
-        self.log_interval   = 30
+        self.log_interval   = 100
         self.experiment_name = "whatever"
         self.paths_to_copy = [os.path.join(root_path,"network/models/SimpleConv.py"),
                               os.path.join(root_path,"network/train.py"),
@@ -55,7 +55,7 @@ class ConfigSimpleConv(Config):
 
         self.train_loader = torch.utils.data.DataLoader(dataset = DrivingDataset(event_bag_path=self.event_bag_path,
                                                                                  world_path=self.world_path,
-                                                                                 debug=True),
+                                                                                 debug=False),
                                                batch_size=self.batch_size,
                                                shuffle=self.shuffle)
         self.model = ChauffeurNet(config = self).to(self.device)
