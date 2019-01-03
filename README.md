@@ -5,6 +5,7 @@ Development will be divided in the following steps:
 
 1. Provide data generation tools:
   - [ ] ~~Add [Carla](https://github.com/carla-simulator/carla) as depenency. This will provide accurate rendered data.~~
+  
   ![](assets/carla-sim.gif)
   - [x] Created my own simulator as I found carla to be too hard to use. This way I think I am more flexible as redering is done at train time based on recorded driving session.
   - [x] Provide preprocessing scripts for data and transform them into the required format for the network.
@@ -34,6 +35,8 @@ The utility of predicted waypoints (of a complete implementation of ChauffeurNet
 How to run:
 
 ```bash
+#For linux: sudo apt-get install python3-tk 
+pip3 install <torch config ex: https://download.pytorch.org/whl/cpu/torch-1.0.0-cp36-cp36m-linux_x86_64.whl>
 pip3 install -r requirements.txt
 python3 main.py
 ```
