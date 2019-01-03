@@ -32,7 +32,7 @@ The utility of predicted waypoints (of a complete implementation of ChauffeurNet
 
 ![](assets/first_net.gif)
 
-How to run:
+How to run with pretrained model (will automatically download model from drive):
 
 ```bash
 #For linux: sudo apt-get install python3-tk 
