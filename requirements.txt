@@ -1,0 +1,7 @@
+opencv-python
+opencv-contrib-python
+numpy
+h5py
+matplotlib
+https://download.pytorch.org/whl/cu90/torch-1.0.0-cp37-cp37m-win_amd64.whl
+torchvision
