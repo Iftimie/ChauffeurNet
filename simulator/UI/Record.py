@@ -5,6 +5,17 @@ import atexit
 from simulator.util.Camera import Camera
 from config import Config
 
+help_recorder = """
+W increase speed
+S decrease speed
+A increase turn angle left
+D increase turn angle right
+Mouse  control turn angle
+ESC save driving session
+
+Note! You should drive for a bit more than Config.horizon*Config.num_skip_poses frames (otherwise error at training)
+"""
+
 class Recorder(GUI):
 
     def __init__(self, event_bag_path="", world_path="" ):
@@ -15,6 +26,7 @@ class Recorder(GUI):
         self.vehicle.render_next_locations_by_steering = True
         self.camera.is_active = False
 
+        print (help_recorder)
 
         self.event_bag = EventBag(event_bag_path, record=True)
 
@@ -35,7 +47,7 @@ class Recorder(GUI):
             to_save_dict["vehicle"] = self.vehicle.get_relevant_states()
 
             self.event_bag.append(to_save_dict)
-
+        self.event_bag.cleanup()
         print ("Game over")
 
 import threading
@@ -47,13 +59,13 @@ def synchronized(wrapped):
     @functools.wraps(wrapped)
     def _wrap(*args, **kwargs):
         with lock:
-            print ("Calling '%s' with Lock %s from thread %s [%s]"
-                   % (wrapped.__name__, id(lock),
-                   threading.current_thread().name, time.time()))
+            # print ("Calling '%s' with Lock %s from thread %s [%s]"
+            #        % (wrapped.__name__, id(lock),
+            #        threading.current_thread().name, time.time()))
             result = wrapped(*args, **kwargs)
-            print ("Done '%s' with Lock %s from thread %s [%s]"
-                   % (wrapped.__name__, id(lock),
-                   threading.current_thread().name, time.time()))
+            # print ("Done '%s' with Lock %s from thread %s [%s]"
+            #        % (wrapped.__name__, id(lock),
+            #        threading.current_thread().name, time.time()))
             return result
     return _wrap
 
@@ -70,7 +82,6 @@ class EventBag:
             self.list_states = pickle.load(self.file)
             self.file.close()
         self.crt_idx = 0
-        atexit.register(self.cleanup)
 
     def append(self, events):
         if self.record == True:
@@ -117,6 +128,7 @@ class EventBag:
         if self.record == True:
             pickle.dump(self.list_states, self.file)
             self.file.close()
+            print ("saved driving session")
 
 
 if __name__ =="__main__":

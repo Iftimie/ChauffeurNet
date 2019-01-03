@@ -10,6 +10,7 @@ from network.train import Config as TrainingConfig
 from network.models.Dataset import DrivingDataset
 from config import Config
 
+
 class Simulator(GUI):
 
     def __init__(self, event_bag_path = "", network_path = "", world_path=""):
@@ -28,7 +29,7 @@ class Simulator(GUI):
         #TODO Jesus refactor things because it's getting shittttyyy
         config = TrainingConfig()
         model = ChauffeurNet(config)
-        model.load_state_dict(torch.load(self.network_path))
+        model.load_state_dict(torch.load(self.network_path,map_location=config.device))
         model.eval()
         model = model.to(config.device)
 

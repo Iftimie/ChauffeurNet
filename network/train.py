@@ -8,7 +8,6 @@ class Config:
     def __init__(self):
         torch.manual_seed(0)
         self.use_cuda = torch.cuda.is_available()
-        print (self.use_cuda)
         self.device = torch.device("cuda" if self.use_cuda else "cpu")
         self.train_loader       = None
         self.model              = None
@@ -38,9 +37,9 @@ class Config:
 class ConfigSimpleConv(Config):
     def __init__(self, root_path = ".."):
         super().__init__()
-        from models.SimpleConv import ChauffeurNet
-        from models.Dataset import DrivingDataset
-        from models.TrainUtil import train_simple_conv
+        from network.models.SimpleConv import ChauffeurNet
+        from network.models.Dataset import DrivingDataset
+        from network.models.TrainUtil import train_simple_conv
         self.batch_size     = 16
         self.lr             = 0.00005
         self.shuffle        = True
@@ -72,7 +71,6 @@ def main():
     cfg = ConfigSimpleConv()
     for epoch in range(cfg.epochs):
         cfg.train(epoch)
-        # test(args, model, device, test_loader)
 
 if __name__ == '__main__':
     main()

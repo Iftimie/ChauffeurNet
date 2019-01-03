@@ -23,13 +23,13 @@ def synchronized(wrapped):
     @functools.wraps(wrapped)
     def _wrap(*args, **kwargs):
         with lock:
-            print ("Calling '%s' with Lock %s from thread %s [%s]"
-                   % (wrapped.__name__, id(lock),
-                   threading.current_thread().name, time.time()))
+            # print ("Calling '%s' with Lock %s from thread %s [%s]"
+            #        % (wrapped.__name__, id(lock),
+            #        threading.current_thread().name, time.time()))
             result = wrapped(*args, **kwargs)
-            print ("Done '%s' with Lock %s from thread %s [%s]"
-                   % (wrapped.__name__, id(lock),
-                   threading.current_thread().name, time.time()))
+            # print ("Done '%s' with Lock %s from thread %s [%s]"
+            #        % (wrapped.__name__, id(lock),
+            #        threading.current_thread().name, time.time()))
             return result
     return _wrap
 

@@ -5,7 +5,7 @@ from simulator.util.Camera import Camera
 from simulator.util.Vehicle import Vehicle
 from simulator.UI.GUI import GUI
 
-"""
+help_world_editor = """
 Keys:
 + zoom in
 - zoom out
@@ -23,6 +23,7 @@ Number keys: 1 LaneMarking
              4 Vehicle
 ~ Delete selected actor
 C select camera immediately
+BACKSPACE exit
 """
 
 class WorldEditor(GUI):
@@ -33,10 +34,11 @@ class WorldEditor(GUI):
         self.selected_index = -1
         self.selected_actor = None
         self.camera.is_active = True
+        print (help_world_editor)
 
     #@Override
     def run(self):
-        while True:
+        while self.running:
             super(WorldEditor, self).interpretIO_and_render()
 
             if self.selected_actor is not None:
@@ -108,6 +110,8 @@ class WorldEditor(GUI):
             self.select_camera_immediately()
         if key == 109:
             self.selected_actor.toggle_move_by_mouse()
+        if key == 8:
+            self.running = False
 
         if key != -1: print("Pressed key ", key)
         # if key == 112:
