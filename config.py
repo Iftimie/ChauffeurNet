@@ -23,27 +23,31 @@ class Config:
 
     #Temporal part
     test_waypoint_idx = 2
-    horizon = 8
+    horizon_past = 24
+    horizon_future = 8
     num_skip_poses = 14
-    num_past_poses = horizon * num_skip_poses
-    num_future_poses = horizon * num_skip_poses
+    num_past_poses = horizon_past * num_skip_poses
+    num_future_poses = horizon_future * num_skip_poses
     rnn_num_channels = 32
 
     #Camera params
     cam_height = -1200
 
     #Vehicle params
-    vehicle_x = 100
-    displace_z = -200
+    vehicle_x = 100     #initial vehicle location x
+    displace_z = -100   #camera dispacement
 
     #Google path length
     path_future_len = 250
 
     #Outputs (don't take into account feature extractor
     #nn_outputs=["steering","waypoints"]
-    nn_outputs=["waypoints"]
+    nn_outputs=["waypoints" ,"speed"]
 
     #Dropout
     num_frames = 70
     dropout_prob = 0.5
     amplitude_range = (0.5/10, 2/10)
+
+    normalizing_speed = 10.0
+    max_speed = normalizing_speed

@@ -133,14 +133,14 @@ class Path(Actor):
 
         if self.dropout_cached_vertices is None:
             if self.vertices_W.shape[1] > 1:
-                array_past_locations = self.vertices_W[:, path_idx-Config.num_frames:path_idx:Config.num_skip_poses]
+                array_past_locations = self.vertices_W[:, path_idx-Config.num_past_poses:path_idx:Config.num_skip_poses]
                 x, y = C.project(array_past_locations)
                 for i in range(0, len(x)):
                     thick = int(ceil(self.render_past_locations_thickness / Config.r_ratio))
                     radius = int(self.render_past_locations_radius / Config.r_ratio)
                     image = cv2.circle(image, (x[i], y[i]), radius, (0, 0, 255), thick)
         else:
-            array_past_locations = self.dropout_cached_vertices[:, path_idx-Config.num_frames:path_idx:Config.num_skip_poses]
+            array_past_locations = self.dropout_cached_vertices[:, path_idx-Config.num_past_poses:path_idx:Config.num_skip_poses]
             x, y = C.project(array_past_locations)
             for i in range(0, len(x)):
                 thick = int(ceil(self.render_past_locations_thickness / Config.r_ratio))

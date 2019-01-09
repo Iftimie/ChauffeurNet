@@ -95,6 +95,7 @@ class DrivingDataset(Dataset):
         self.vehicle.next_locations_by_steering = state["vehicle"]["next_locations_by_steering"]
         self.vehicle.vertices_W = state["vehicle"]["vertices_W"]
         self.vehicle.turn_angle = state["vehicle"]["turn_angle"]
+        self.vehicle.speed = state["vehicle"]["speed"]
         self.vehicle.set_transform(*self.vehicle.get_transform())
 
         self.path.apply_dropout(idx, self.vehicle)
@@ -104,10 +105,14 @@ class DrivingDataset(Dataset):
         future_points = self.prepare_labels(self.path, idx)
 
         steering = self.vehicle.turn_angle
+        speed = np.array(self.vehicle.speed / Config.normalizing_speed, dtype=np.float32)
 
         future_penalty_maps = self.future_penalty_map(future_points)
 
-        sample = {'data': data, 'steering': steering, "future_penalty_maps": future_penalty_maps}
+        sample = {'data': data,
+                  'steering': steering,
+                  "future_penalty_maps": future_penalty_maps,
+                  'speed':speed}
         return sample
 
     @staticmethod
@@ -155,7 +160,7 @@ class DrivingDataset(Dataset):
         image_concatenated[5, ...] = image_agent_past_poses
         # TODO add the future pose here
 
-        if debug:
+        if False:
             cv2.imshow("image1", image_lanes)
             cv2.imshow("image4", image_vehicle)
             cv2.imshow("image5", image_path)
@@ -167,7 +172,7 @@ class DrivingDataset(Dataset):
 
         future_pose_states = []
         # TODO I also have to add to the future pose states the angle prediction, or head orientation predicition
-        for i in range(Config.horizon):
+        for i in range(Config.horizon_future):
             point = path.project_future_poses(self.vehicle.camera, path_idx, i * Config.num_skip_poses)
             future_pose_states.append(point)
         future_pose_states = np.squeeze(np.array(future_pose_states))

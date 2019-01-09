@@ -10,16 +10,19 @@ def main():
     check_if_data_exists()
 
     edit_world = False
-    record_and_train = False
-    just_test_network = True
+    record = False
+    do_train = True
+    just_test_network = False
 
     if edit_world:
         worldEditor = WorldEditor("data/world.h5")
         worldEditor.run()
 
-    if record_and_train:
+    if record:
         recorder = Recorder(event_bag_path="data/recorded_states.pkl", world_path="data/world.h5")
         recorder.run()
+
+    if do_train:
         cfg = ConfigSimpleConv(root_path=".")
         for epoch in range(cfg.epochs):
             cfg.train(epoch)

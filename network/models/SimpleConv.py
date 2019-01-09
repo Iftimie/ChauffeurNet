@@ -77,6 +77,10 @@ class SteeringPredictor(nn.Module):
         x = self.fc2(x)
         return x
 
+#defined new class that looks just like steering predictor
+SpeedPredictor = SteeringPredictor
+
+
 class WaypointHeatmap(nn.Module):
 
     def conv_block(self, in_channels, out_channels):
@@ -138,7 +142,7 @@ class AgentRNN(nn.Module):
         x_t = self.rel_f2i(x_t)
 
         future_waypoints = []
-        for i in range(Config.horizon):
+        for i in range(Config.horizon_future):
             WihXt    = self.i2h(x_t)
             WihXt    = self.rel_i2h(WihXt)
 
@@ -161,10 +165,13 @@ class ChauffeurNet(nn.Module):
         self.feature_extractor = FeatureExtractor(imagenet_trained=True)
         if "steering" in Config.nn_outputs:
             self.steering_predictor = SteeringPredictor()
+            self.criterion_steering = nn.MSELoss(reduction='none')
         if "waypoints" in Config.nn_outputs:
             self.agent_rnn = AgentRNN(config)
+        if "speed" in Config.nn_outputs:
+            self.speed_predictor = SpeedPredictor()
+            self.criterion_speed = nn.MSELoss(reduction='sum')
 
-        self.criterion_steering = nn.MSELoss(reduction='none')
 
 
     def forward(self, x):
@@ -175,6 +182,8 @@ class ChauffeurNet(nn.Module):
             nn_outputs["steering"] = self.steering_predictor(features)
         if "waypoints" in Config.nn_outputs:
             nn_outputs["waypoints"] = self.agent_rnn(features)
+        if "speed" in Config.nn_outputs:
+            nn_outputs["speed"] = self.speed_predictor(features)
 
         return nn_outputs
 
@@ -242,13 +251,17 @@ class ChauffeurNet(nn.Module):
 
     def compute_loss(self, nn_outputs, sampled_batch, cfg):
         steering_gt = sampled_batch['steering'].to(cfg.device)
+        speed_gt = sampled_batch['speed'].to(cfg.device)
         future_penalty_maps = sampled_batch['future_penalty_maps'].to(cfg.device)
+
 
         loss = 0
         if "steering" in nn_outputs:
             loss += self.steering_weighted_loss(steering_gt, nn_outputs["steering"])
         if "waypoints" in nn_outputs:
             loss += self.waypoints_loss(future_penalty_maps, nn_outputs["waypoints"])
+        if "speed" in nn_outputs:
+            loss += self.criterion_speed(speed_gt, nn_outputs["speed"]) / cfg.batch_size
 
         return loss
 

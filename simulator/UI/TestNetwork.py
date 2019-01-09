@@ -63,6 +63,7 @@ class Simulator(GUI):
 
                 # self.vehicle.simulate(key, mouse)
                 self.vehicle.interpret_key(key)
+                #TODO simulate given speed from network or from waypoint
                 self.vehicle.simulate_given_waypoint(x=waypoints_3D[0][Config.test_waypoint_idx], z = waypoints_3D[2][Config.test_waypoint_idx], yaw=None, mouse= None)
 
                 self.vehicle.c = (0,0,200)

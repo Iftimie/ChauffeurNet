@@ -194,6 +194,8 @@ class Vehicle(Actor):
         self.update_parameters()
 
     def compute_turn_angle(self, x,z,yaw, mouse):
+
+        #I don't remember why I pus this condition here...
         if self.speed == 0:
             return
         x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.get_transform()
@@ -221,11 +223,22 @@ class Vehicle(Actor):
         #I don't fucking know why it has to be multiplied by 2 but it works
         self.turn_angle = next_turn_angle
 
+    def compute_speed(self, x, z):
+        x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.get_transform()
+
+        current = np.array([x_c, 0, z_c])
+        desired = np.array([x, 0, z])
+        difference = desired - current
+        magnitude = np.linalg.norm(difference)
+        self.speed = min(magnitude, Config.max_speed)
+
+
     def simulate_given_waypoint(self, x,z,yaw, mouse):
         """
         This method should not modify the speed, it will update the position and the orientation, given the desired location and orientation
         """
 
+        self.compute_speed(x,z)
         self.compute_turn_angle(x,z,yaw,mouse)
         self.update_parameters()
 
