@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import matplotlib.pyplot as plt
+from config import Config
+if not Config.linux_env:
+    import matplotlib.pyplot as plt
 from torchvision.models.resnet import ResNet,BasicBlock,model_urls
 import torch.utils.model_zoo as model_zoo
-from config import Config
 
 """
 I define here the model, the dataset format and the training procedure for this specific model,

@@ -1,8 +1,9 @@
 import numpy as np
 from torch.utils.data import Dataset
 from math import *
-import matplotlib.pyplot as plt
 from config import Config
+if not Config.linux_env:
+    import matplotlib.pyplot as plt
 from simulator.UI.Record import EventBag
 from simulator.util.World import World
 from simulator.util.Vehicle import Vehicle
@@ -98,7 +99,8 @@ class DrivingDataset(Dataset):
         self.vehicle.speed = state["vehicle"]["speed"]
         self.vehicle.set_transform(*self.vehicle.get_transform())
 
-        self.path.apply_dropout(idx, self.vehicle)
+        if self.vehicle.speed > 4:
+            self.path.apply_dropout(idx, self.vehicle)
 
         input_planes = DrivingDataset.render_inputs_on_separate_planes(self.world, self.vehicle, self.path, idx)
         data = (DrivingDataset.prepare_images(input_planes, self.debug).astype(np.float32) - 128) / 128
@@ -116,7 +118,7 @@ class DrivingDataset(Dataset):
         return sample
 
     @staticmethod
-    def render_inputs_on_separate_planes(world, vehicle, path, path_idx):
+    def render_inputs_on_separate_planes(world, vehicle, path, path_idx, mode="train"):
         image_lanes = np.zeros((Config.r_res[0], Config.r_res[1], 3), np.uint8)
         image_vehicle = np.zeros((Config.r_res[0], Config.r_res[1], 3), np.uint8)
         image_path = np.zeros((Config.r_res[0], Config.r_res[1], 3), np.uint8)
@@ -127,8 +129,11 @@ class DrivingDataset(Dataset):
             if type(actor) is LaneMarking:
                 image_lanes = actor.render(image_lanes, vehicle.camera)
         image_vehicle = vehicle.render(image_vehicle, vehicle.camera)
-        image_path = path.render(image_path, vehicle.camera, path_idx)
-        image_agent_past_poses = path.render_past_locations_func(image_agent_past_poses, vehicle.camera, path_idx)
+        image_path = path.render(image_path, vehicle.camera, path_idx, vehicle, mode)
+        if mode == "test":
+            image_agent_past_poses = vehicle.render_past_locations_func(image_agent_past_poses)
+        elif mode =="train":
+            image_agent_past_poses = path.render_past_locations_func(image_agent_past_poses, vehicle.camera, path_idx)
         # image_lanes = self.vehicle.render(image_lanes, self.camera)
 
         input_planes = {"image_lanes": image_lanes,

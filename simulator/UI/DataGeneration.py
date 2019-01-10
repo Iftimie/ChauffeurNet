@@ -10,7 +10,6 @@ import atexit
 from simulator.UI.Record import EventBag
 from network.models.Dataset import DrivingDataset
 from config import Config
-import matplotlib.pyplot as plt
 
 class Renderer:
 

@@ -59,6 +59,8 @@ class Vehicle(Actor):
         self.is_active = True
         self.render_next_locations_by_steering = False
 
+        self.render_past_locations_thickness = 8
+        self.render_past_locations_radius = 2
 
 
     def get_relevant_states(self):
@@ -142,6 +144,19 @@ class Vehicle(Actor):
             x, y, z, roll, yaw, pitch = params_from_tansformation(past_location) #TODO maybe refactor this to be not depend directly on the outer package
             self.past_locations.append([x, y, z,1])
 
+    # TODO rendering past locations at test time must contain data from true previous locations (cannot use vertices from train data(recirded))
+    def render_past_locations_func(self, image):
+
+        if len(self.past_locations) > 0:
+            array_past_locations = np.array(self.past_locations).T[:,-1:Config.num_past_poses:-Config.num_skip_poses]
+            x, y = self.camera.C.project(array_past_locations)
+            for i in range(0, len(x)):
+                thick = int(ceil(self.render_past_locations_thickness / Config.r_ratio))
+                radius = int(self.render_past_locations_radius / Config.r_ratio)
+                image = cv2.circle(image, (x[i], y[i]), radius, (0, 0, 255), thick)
+
+        return image
+
     def update_parameters(self):
         x, y, z, roll, yaw, pitch = self.get_transform()
 
@@ -209,7 +224,7 @@ class Vehicle(Actor):
         heading = np.array([x_h, 0, z_h])
         heading = heading / np.linalg.norm(heading)
         desired = np.array([x_d, 0, z_d])
-        desired = desired / np.linalg.norm(desired)
+        desired = desired / (np.linalg.norm(desired)+ 1e-8)
         delta_angle = np.arccos(heading.dot(desired))
         cross = np.cross(heading, desired)
 
@@ -230,15 +245,18 @@ class Vehicle(Actor):
         desired = np.array([x, 0, z])
         difference = desired - current
         magnitude = np.linalg.norm(difference)
-        self.speed = min(magnitude, Config.max_speed)
+        print (self.speed, magnitude)
+        interp_obj = interp1d([Config.min_waypoint_distance, Config.max_waypoint_distance], [0, Config.max_speed], fill_value="extrapolate")
+        self.speed = min(interp_obj(magnitude), Config.max_speed)
 
 
-    def simulate_given_waypoint(self, x,z,yaw, mouse):
+    def simulate_given_waypoints(self, waypoints,yaw, mouse):
         """
         This method should not modify the speed, it will update the position and the orientation, given the desired location and orientation
         """
-
+        x,z =waypoints[0][Config.test_waypoint_idx_speed],waypoints[2][Config.test_waypoint_idx_speed]
         self.compute_speed(x,z)
+        x,z =waypoints[0][Config.test_waypoint_idx_steer],waypoints[2][Config.test_waypoint_idx_steer]
         self.compute_turn_angle(x,z,yaw,mouse)
         self.update_parameters()
 

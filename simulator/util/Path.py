@@ -40,7 +40,19 @@ class Path(Actor):
         self.render_past_locations_thickness = 8
         self.render_past_locations_radius = 2
 
-    def render(self, image, C, path_idx):
+    def get_point_idx_close_to_car(self, vehicle, path_idx):
+        x_c, y_c, z_c, roll_c, yaw_c, pitch_c = vehicle.get_transform()
+        v_pos = np.array([[x_c, y_c, z_c, 1]]).T
+        diff = self.vertices_W - v_pos
+        diff_sq = diff * diff
+        offset = max(path_idx-100, 0)
+        diff_sq_sum = np.sum(diff_sq, axis=0)[offset:path_idx+100]
+
+        index = np.argmin(diff_sq_sum) + offset
+        return index
+
+
+    def render(self, image, C, path_idx, vehicle, mode):
         """
         :param image: image on which this actor will be renderd on
         :param C:     camera matrix
@@ -48,6 +60,10 @@ class Path(Actor):
         we want to render only the next positions
         :return:      image with this object renderd
         """
+
+        if mode=="test":
+            path_idx = self.get_point_idx_close_to_car(vehicle, path_idx)
+
         if self.vertices_W.shape[1] > 1:
             selected_for_projection = self.vertices_W[:,path_idx:path_idx+ Config.path_future_len]
             x, y = C.project(selected_for_projection)
@@ -64,7 +80,11 @@ class Path(Actor):
             x, y = C.project(selected_for_projection)
             for i in range(0, len(x)):
                 image = cv2.circle(image, (x[i], y[i]), 0, (0, 0, 255),0 )
-        return image
+
+        if mode == "test":
+            return image, path_idx
+        elif mode =="train":
+            return image
 
     def project_future_poses(self, C, current_path_idx, future_waypoint):
 
@@ -129,18 +149,21 @@ class Path(Actor):
 
         return
 
+    #TODO rendering past locations must be done efficiently at train time using data from path
     def render_past_locations_func(self, image, C, path_idx):
 
         if self.dropout_cached_vertices is None:
             if self.vertices_W.shape[1] > 1:
-                array_past_locations = self.vertices_W[:, path_idx-Config.num_past_poses:path_idx:Config.num_skip_poses]
+                offset = max(path_idx-Config.num_past_poses,0)
+                array_past_locations = self.vertices_W[:, offset:path_idx:Config.num_skip_poses]
                 x, y = C.project(array_past_locations)
                 for i in range(0, len(x)):
                     thick = int(ceil(self.render_past_locations_thickness / Config.r_ratio))
                     radius = int(self.render_past_locations_radius / Config.r_ratio)
                     image = cv2.circle(image, (x[i], y[i]), radius, (0, 0, 255), thick)
         else:
-            array_past_locations = self.dropout_cached_vertices[:, path_idx-Config.num_past_poses:path_idx:Config.num_skip_poses]
+            offset = max(path_idx - Config.num_past_poses, 0)
+            array_past_locations = self.dropout_cached_vertices[:, offset:path_idx:Config.num_skip_poses]
             x, y = C.project(array_past_locations)
             for i in range(0, len(x)):
                 thick = int(ceil(self.render_past_locations_thickness / Config.r_ratio))

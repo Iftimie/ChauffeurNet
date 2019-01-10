@@ -11,8 +11,8 @@ def main():
 
     edit_world = False
     record = False
-    do_train = True
-    just_test_network = False
+    do_train = False
+    just_test_network = True
 
     if edit_world:
         worldEditor = WorldEditor("data/world.h5")

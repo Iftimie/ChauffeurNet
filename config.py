@@ -22,7 +22,8 @@ class Config:
 
 
     #Temporal part
-    test_waypoint_idx = 2
+    test_waypoint_idx_steer = 2
+    test_waypoint_idx_speed = 5
     horizon_past = 24
     horizon_future = 8
     num_skip_poses = 14
@@ -38,11 +39,12 @@ class Config:
     displace_z = -100   #camera dispacement
 
     #Google path length
-    path_future_len = 250
+    path_future_len = 350
 
     #Outputs (don't take into account feature extractor
-    #nn_outputs=["steering","waypoints"]
-    nn_outputs=["waypoints" ,"speed"]
+    #nn_outputs=["steering","waypoints", "speed"]
+    nn_outputs=["waypoints" ]
+    nn_outputs=["waypoints", "speed"]
 
     #Dropout
     num_frames = 70
@@ -50,4 +52,12 @@ class Config:
     amplitude_range = (0.5/10, 2/10)
 
     normalizing_speed = 10.0
-    max_speed = normalizing_speed
+    max_speed = 6
+
+    #the selected waypoint correspons to a maximum distance from car of test_waypoint_idx_speed * num_skip_poses * max_speed   at max speed
+    #as waypoints get closer together near the intersection, the selected waypoint might not be sufficiently close to the car in order for it to decrease speed
+    #thus we need to interpolate the distance to waypoint from (0, max_waypoint_distance) to (0, max_speed)
+    max_waypoint_distance = (test_waypoint_idx_speed * num_skip_poses * max_speed) / 2
+    min_waypoint_distance = 0 # this is for test_waypoint_idx_speed 5
+
+    linux_env = False
