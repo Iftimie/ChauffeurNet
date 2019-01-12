@@ -1,3 +1,10 @@
 ffmpeg -y -ss 58 -t 30 -i rDAEy6HPtN.mp4 -vf fps=30,scale=320:-1:flags=lanczos,palettegen palette.png
 
 ffmpeg -ss 58 -t 30 -i rDAEy6HPtN.mp4 -i palette.png -filter_complex "fps=10,scale=320:-1:flags=lanczos[x];[x][1:v]paletteuse" output.gif
+
+
+
+or:
+
+ffmpeg -i 2019-01-12_21-07-22.mp4 -y -an -r 3 -f image2 -vcodec mjpeg image_%06d.jpg
+ffmpeg -framerate 100 -i image_%06d.jpg -i palette.png -filter_complex "[0]scale=w=400:h=-1[x];[x][1:v] paletteuse" -pix_fmt rgb24 output.gif

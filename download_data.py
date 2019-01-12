@@ -30,10 +30,10 @@ def save_response_content(response, destination):
             if chunk: # filter out keep-alive new chunks
                 f.write(chunk)
 def check_if_data_exists():
-    required_files = [['1ELsT8P58WBbf3T7NulOtgC1-KZChj-ae',  'data/world.h5'],
-                      ['1n9OcacOQZEE28pfV8Z7YhYNa07v1x7Fg', 'data/recorded_states.pkl'],
-                      ['1QzbAJWS2EYH15JKawfI-kGpojhTeWN-O', 'data/pytorch_data.h5'],
-                      ['1ad-4q-J2qrZdBwpfLA46ZNmC33L_vT3g', 'data/ChauffeurNet.pt']]
+    #https://drive.google.com/open?id=1KUaeIqIQh8ECjNdIFieVa6MW7DYgVrwg
+    required_files = [['1azkG7nXZhsVbBD04ka8D8S-YQyHmT_6W',  'data/world.h5'],
+                      ['1yPmdlxo-Uhc7jrXnOtx-E6_89FFKVofM', 'data/recorded_states.pkl'],
+                      ['1KUaeIqIQh8ECjNdIFieVa6MW7DYgVrwg', 'data/ChauffeurNet.pt']]
     if not os.path.exists("data"):
         os.mkdir("data")
     for pair in required_files:

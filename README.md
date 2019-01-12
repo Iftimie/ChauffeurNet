@@ -32,6 +32,12 @@ The utility of predicted waypoints (of a complete implementation of ChauffeurNet
 
 ![](assets/first_net.gif)
 
+v 0.1.1
+
+The net was trained to stop at every intersection. Thus, I added the speed control based on distance from car to waypoint.
+
+![](assets/v0.1.1.gif)
+
 How to run with pretrained model (will automatically download model from drive):
 
 ```bash
