@@ -24,7 +24,7 @@ class Config:
     #Temporal part
     test_waypoint_idx_steer = 2
     test_waypoint_idx_speed = 5
-    horizon_past = 24
+    horizon_past = 8
     horizon_future = 8
     num_skip_poses = 14
     num_past_poses = horizon_past * num_skip_poses

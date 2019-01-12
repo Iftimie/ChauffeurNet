@@ -24,6 +24,7 @@ class Recorder(GUI):
         self.world.actors.append(self.vehicle)
         self.vehicle.is_active = True
         self.vehicle.render_next_locations_by_steering = True
+        self.vehicle.render_past_locations = True
         self.camera.is_active = False
 
         print (help_recorder)
@@ -50,37 +51,19 @@ class Recorder(GUI):
         self.event_bag.cleanup()
         print ("Game over")
 
-import threading
-import functools
-import time
-def synchronized(wrapped):
-    lock = threading.Lock()
-    # print lock, id(lock)
-    @functools.wraps(wrapped)
-    def _wrap(*args, **kwargs):
-        with lock:
-            # print ("Calling '%s' with Lock %s from thread %s [%s]"
-            #        % (wrapped.__name__, id(lock),
-            #        threading.current_thread().name, time.time()))
-            result = wrapped(*args, **kwargs)
-            # print ("Done '%s' with Lock %s from thread %s [%s]"
-            #        % (wrapped.__name__, id(lock),
-            #        threading.current_thread().name, time.time()))
-            return result
-    return _wrap
-
 class EventBag:
 
-    @synchronized
     def __init__(self, file_path, record = True):
         self.record = record
         if record == True:
             self.file = open( file_path, "wb" )
             self.list_states = []
         else:
+            #TODO warning. This file must be deleted after cration. in multi-workers training, pickle cannot serialzie buffered reader
             self.file = open( file_path, "rb" )
             self.list_states = pickle.load(self.file)
             self.file.close()
+            del self.file
         self.crt_idx = 0
 
     def append(self, events):

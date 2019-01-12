@@ -58,6 +58,7 @@ class Vehicle(Actor):
 
         self.is_active = True
         self.render_next_locations_by_steering = False
+        self.render_past_locations = False
 
         self.render_past_locations_thickness = 8
         self.render_past_locations_radius = 2
@@ -91,6 +92,8 @@ class Vehicle(Actor):
         image = super(Vehicle, self).render(image, C)
         if self.render_next_locations_by_steering == True:
             image = self.render_next_locations_by_steering_func(image,C)
+        if self.render_past_locations == True:
+            image = self.render_past_locations_func(image, C)
 
         return image
 
@@ -145,15 +148,15 @@ class Vehicle(Actor):
             self.past_locations.append([x, y, z,1])
 
     # TODO rendering past locations at test time must contain data from true previous locations (cannot use vertices from train data(recirded))
-    def render_past_locations_func(self, image):
+    def render_past_locations_func(self, image, C):
 
         if len(self.past_locations) > 0:
-            array_past_locations = np.array(self.past_locations).T[:,-1:Config.num_past_poses:-Config.num_skip_poses]
-            x, y = self.camera.C.project(array_past_locations)
+            array_past_locations = np.array(self.past_locations[-1:-Config.num_past_poses:-Config.num_skip_poses]).T
+            x, y = C.project(array_past_locations)
             for i in range(0, len(x)):
                 thick = int(ceil(self.render_past_locations_thickness / Config.r_ratio))
                 radius = int(self.render_past_locations_radius / Config.r_ratio)
-                image = cv2.circle(image, (x[i], y[i]), radius, (0, 0, 255), thick)
+                image = cv2.circle(image, (x[i], y[i]), radius, (128, 128, 128), thick)
 
         return image
 

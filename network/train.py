@@ -3,6 +3,8 @@ import torch.optim as optim
 import os
 from time import gmtime, strftime
 import shutil
+torch.multiprocessing.set_sharing_strategy('file_system')
+
 
 class Config:
     def __init__(self):
@@ -58,7 +60,7 @@ class ConfigSimpleConv(Config):
                                                                                  debug=False),
                                                batch_size=self.batch_size,
                                                shuffle=self.shuffle,
-                                                num_workers=0)
+                                                num_workers=8)
 
         # self.model.load_state_dict(torch.load("../experiments/2018-12-21_21-38-57_whatever/checkpoints/ChauffeurNet_99_120.pt"))
 

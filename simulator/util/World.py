@@ -115,3 +115,5 @@ class World(Actor):
 
                 instance.from_h5py(file[class_name][i])
                 self.actors.append(instance)
+        file.close()
+        del file
