@@ -44,7 +44,7 @@ class Config:
     #Outputs (don't take into account feature extractor
     #nn_outputs=["steering","waypoints", "speed"]
     nn_outputs=["waypoints" ]
-    nn_outputs=["waypoints", "speed"]
+    # nn_outputs=["waypoints", "speed"]
 
     #Dropout
     num_frames = 70

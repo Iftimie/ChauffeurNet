@@ -43,7 +43,7 @@ class ConfigSimpleConv(Config):
         from network.models.Dataset import DrivingDataset
         from network.models.TrainUtil import train_simple_conv
         self.batch_size     = 16
-        self.lr             = 0.00005
+        self.lr             = 0.005
         self.shuffle        = True
         self.epochs         = 100
         self.event_bag_path = os.path.join(root_path,"data/recorded_states.pkl")
@@ -60,11 +60,12 @@ class ConfigSimpleConv(Config):
                                                                                  debug=False),
                                                batch_size=self.batch_size,
                                                shuffle=self.shuffle,
-                                                num_workers=8)
+                                                num_workers=4)
 
         # self.model.load_state_dict(torch.load("../experiments/2018-12-21_21-38-57_whatever/checkpoints/ChauffeurNet_99_120.pt"))
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, 'min')
         self.training_procedure = train_simple_conv
 
         self.initialize_experiment()

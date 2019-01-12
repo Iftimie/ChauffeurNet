@@ -77,6 +77,7 @@ class Simulator(GUI):
                 image_test_nn.fill(0)
                 image_test_nn, path_idx = self.path.render(image_test_nn, C=self.vehicle.camera, path_idx=path_idx, vehicle=self.vehicle, mode="test")
                 image_test_nn = self.world.render(image=image_test_nn, C=self.vehicle.camera, reset_image=False)
+                image_test_nn = self.vehicle.render_past_locations_func(image=image_test_nn, C=self.vehicle.camera)
                 self.vehicle.c = (200,200,200)
                 for j in range(len(waypoints_2D)):
                     image_test_nn = cv2.circle(image_test_nn,(waypoints_2D[j,1],waypoints_2D[j,0]),radius=1,color = (0,0+j*30,0),thickness=1)
