@@ -52,7 +52,7 @@ class Path(Actor):
         return index
 
 
-    def render(self, image, C, path_idx, vehicle, mode):
+    def render(self, image, C, path_idx, vehicle):
         """
         :param image: image on which this actor will be renderd on
         :param C:     camera matrix
@@ -60,9 +60,6 @@ class Path(Actor):
         we want to render only the next positions
         :return:      image with this object renderd
         """
-
-        if mode=="test":
-            path_idx = self.get_point_idx_close_to_car(vehicle, path_idx)
 
         if self.vertices_W.shape[1] > 1:
             selected_for_projection = self.vertices_W[:,path_idx:path_idx+ Config.path_future_len]
@@ -81,10 +78,7 @@ class Path(Actor):
             for i in range(0, len(x)):
                 image = cv2.circle(image, (x[i], y[i]), 0, (0, 0, 255),0 )
 
-        if mode == "test":
-            return image, path_idx
-        elif mode =="train":
-            return image
+        return image
 
     def project_future_poses(self, C, current_path_idx, future_waypoint):
 

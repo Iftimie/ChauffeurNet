@@ -20,7 +20,8 @@ class GUI:
             pass
         GUI.mouse = (x,y)
 
-    def mouse_on_world(self, mouse, camera):
+    @staticmethod
+    def mouse_on_world( mouse, camera):
         """
         Don't use the GUI.mouse variable....or maybe use it???
         http://antongerdelan.net/opengl/raycasting.html
@@ -77,7 +78,7 @@ class GUI:
         Will render the world, will listen for keyboard and mouse inputs
         """
         self.pressed_key = self.step()
-        GUI.mouse_world = self.mouse_on_world(GUI.mouse, self.camera)
+        GUI.mouse_world = GUI.mouse_on_world(GUI.mouse, self.camera)
         self.interpret_key()  # will call child class method
         self.display_image = self.world.render(image=self.display_image, C=self.camera)
         cv2.imshow(self.window_name, self.display_image)

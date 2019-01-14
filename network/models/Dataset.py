@@ -129,7 +129,8 @@ class DrivingDataset(Dataset):
             if type(actor) is LaneMarking:
                 image_lanes = actor.render(image_lanes, vehicle.camera)
         image_vehicle = vehicle.render(image_vehicle, vehicle.camera)
-        image_path = path.render(image_path, vehicle.camera, path_idx, vehicle, mode)
+        image_path = path.render(image_path, vehicle.camera, path_idx, vehicle)
+
         if mode == "test":
             image_agent_past_poses = vehicle.render_past_locations_func(image_agent_past_poses)
         elif mode =="train":
@@ -140,7 +141,10 @@ class DrivingDataset(Dataset):
                         "image_vehicle": image_vehicle,
                         "image_path": image_path,
                         "image_agent_past_poses": image_agent_past_poses}
-        return input_planes
+        if mode =="train":
+            return input_planes
+        else:
+            return input_planes, path_idx
 
     @staticmethod
     def prepare_images(images, debug):
