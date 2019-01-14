@@ -67,11 +67,7 @@ class Vehicle(Actor):
     def get_relevant_states(self):
         #It should contain only primitive datatypes, numpy arrays, lists of numpy arrays, no other User defined class
         states = {}
-        states["vertices_W"] = self.vertices_W.copy()
-        states["next_locations_by_steering"] = self.next_locations_by_steering.copy()
-        states["past_locations"] = copy.deepcopy(self.past_locations)
-        states["camera"] = copy.deepcopy(self.camera)
-        states["turn_angle"] = self.turn_angle
+        states["cameraT"] = self.camera.T.copy()
         states["speed"] = self.speed
         states["T"] = self.T
         return states
@@ -84,8 +80,6 @@ class Vehicle(Actor):
                 radius = int(ceil(self.render_radius / Config.r_ratio))
                 image = cv2.circle(image, (x[i], y[i]), radius , (0, 0, 255),thick)
         return image
-
-
 
     #@Override
     def render(self, image, C):

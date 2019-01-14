@@ -10,9 +10,9 @@ def main():
     check_if_data_exists()
 
     edit_world = False
-    record = False
-    do_train = False
-    just_test_network = True
+    record = True
+    do_train = True
+    just_test_network = False
 
     if edit_world:
         worldEditor = WorldEditor("data/world.h5")

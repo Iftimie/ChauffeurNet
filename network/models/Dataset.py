@@ -91,11 +91,9 @@ class DrivingDataset(Dataset):
     def __getitem__(self, idx):
         state = self.event_bag[idx]
         self.vehicle.T = state["vehicle"]["T"]
-        self.camera.C = state["vehicle"]["camera"].C
-        self.vehicle.camera.C = state["vehicle"]["camera"].C
-        self.vehicle.next_locations_by_steering = state["vehicle"]["next_locations_by_steering"]
-        self.vehicle.vertices_W = state["vehicle"]["vertices_W"]
-        self.vehicle.turn_angle = state["vehicle"]["turn_angle"]
+        self.camera.C = self.camera.create_cammera_matrix(state["vehicle"]["cameraT"], self.camera.K)
+        self.vehicle.camera.C = self.camera.C
+        self.vehicle.vertices_W = self.vehicle.T.dot(self.vehicle.vertices_L)
         self.vehicle.speed = state["vehicle"]["speed"]
         self.vehicle.set_transform(*self.vehicle.get_transform())
 

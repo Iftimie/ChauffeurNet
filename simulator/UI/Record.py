@@ -80,11 +80,6 @@ class EventBag:
         if self.record == False:
             event = self.list_states[self.crt_idx]
 
-            #update camera matrix, since recording could have been at another resolution
-            camera = event["vehicle"]["camera"]
-            camera.K = camera.create_K(Camera.cam_config)
-            camera.C = camera.create_cammera_matrix(camera.T,camera.K)
-            event["vehicle"]["camera"]= camera
             self.crt_idx +=1
         else:
             raise ValueError("EventBag opened as write mode")
@@ -93,13 +88,6 @@ class EventBag:
     def __getitem__(self, idx):
         if self.record == False:
             event = self.list_states[idx]
-
-            # update camera matrix, since recording could have been at another resolution
-            camera = event["vehicle"]["camera"]
-            camera.K = camera.create_K(Camera.cam_config)
-            camera.C = camera.create_cammera_matrix(camera.T, camera.K)
-            event["vehicle"]["camera"] = camera
-
         else:
             raise ValueError("EventBag opened as write mode")
         return event
@@ -114,6 +102,6 @@ class EventBag:
             print ("saved driving session")
 
 
-if __name__ =="__main__":
+if __name__ == "__main__":
     recorder = Recorder(event_bag_path="../../data/recorded_states.pkl", world_path="../../data/world.h5")
     recorder.run()
