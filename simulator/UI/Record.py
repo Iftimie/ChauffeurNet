@@ -1,9 +1,7 @@
 from simulator.util.Vehicle import Vehicle
 from simulator.UI.GUI import GUI
 import pickle
-import atexit
-from simulator.util.Camera import Camera
-from config import Config
+from simulator.control.car_controller.LiveController import LiveController
 
 help_recorder = """
 W increase speed
@@ -29,6 +27,7 @@ class Recorder(GUI):
 
         print (help_recorder)
 
+        self.live_controller = LiveController(self.vehicle, self.world)
         self.event_bag = EventBag(event_bag_path, record=True)
 
     # @Override
@@ -41,7 +40,7 @@ class Recorder(GUI):
         while self.running:
             super(Recorder, self).interpretIO_and_render()
 
-            self.world.simulate(self.pressed_key, GUI.mouse)
+            self.live_controller.step(self.pressed_key, GUI.mouse)
             to_save_dict = {}
             to_save_dict["pressed_key"] = self.pressed_key
             to_save_dict["mouse"] = (GUI.mouse[0], GUI.mouse[1])

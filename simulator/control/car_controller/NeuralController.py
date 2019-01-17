@@ -8,7 +8,7 @@ import torch
 
 class NeuralController(Controller):
     """
-    This controller should receive an
+    This controller should receive a path idx based on which it will render the image, forward into net, and apply output to kinematic model of the car
     """
 
     def __init__(self, vehicle, world, model_path, recorded_path):
@@ -44,7 +44,7 @@ class NeuralController(Controller):
         waypoints_3D = np.squeeze(np.array(waypoints_3D)).T
         waypoints_3D = np.vstack((waypoints_3D, ones))
 
-        self.vehicle.simulate_given_waypoints(waypoints_3D, yaw=None, mouse=None)
+        self.vehicle.simulate_given_waypoints(waypoints_3D)
 
         return waypoints_2D, path_idx
 

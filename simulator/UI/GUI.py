@@ -12,13 +12,14 @@ class GUI:
     mouse_world = (0,0,0)
     @staticmethod
     def mouse_listener(event, x, y, flags, param):
+        event = None
         if event == cv2.EVENT_LBUTTONDOWN:
             print (event)
             pass
         elif event == cv2.EVENT_LBUTTONUP:
             print (event)
             pass
-        GUI.mouse = (x,y)
+        GUI.mouse = (x,y, event)
 
     @staticmethod
     def mouse_on_world( mouse, camera):

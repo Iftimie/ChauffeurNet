@@ -49,6 +49,8 @@ class World(Actor):
             image = actor.render(image, C)
         return image
 
+
+
     # @Override
     def simulate(self, pressed_key=None, mouse=None):
         for actor in self.actors:
@@ -64,7 +66,7 @@ class World(Actor):
             filename_ext = os.path.basename(self.save_path)
             filename, ext = os.path.splitext(filename_ext)
             UID = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-            filename = filename + UID +".h5"
+            filename = filename + UID + ".h5"
             self.save_path = os.path.join(directory, filename)
 
         # The following spagetti code, takes the class names of all actors, counts the actors, and and creates a dataset for each type in h5py
@@ -108,6 +110,7 @@ class World(Actor):
         file = h5py.File(self.save_path, "r")
         for class_name in file.keys():
             # module_imported =importlib.import_module("util")
+            #If error while doing instance = class_(). Check if the imported class is listed in __init__.py
             module_imported =importlib.import_module(sys.modules[__name__].__package__)
             class_ = getattr(module_imported, class_name)
             for i in range(file[class_name].shape[0]):

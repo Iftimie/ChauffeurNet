@@ -205,7 +205,7 @@ class Vehicle(Actor):
         self.interpret_mouse(mouse)
         self.update_parameters()
 
-    def compute_turn_angle(self, x,z,yaw, mouse):
+    def compute_turn_angle(self, x,z):
 
         #I don't remember why I pus this condition here...
         if self.speed == 0:
@@ -247,13 +247,13 @@ class Vehicle(Actor):
         self.speed = min(interp_obj(magnitude), Config.max_speed)
 
 
-    def simulate_given_waypoints(self, waypoints,yaw, mouse):
+    def simulate_given_waypoints(self, waypoints):
         """
         This method should not modify the speed, it will update the position and the orientation, given the desired location and orientation
         """
         x,z =waypoints[0][Config.test_waypoint_idx_speed],waypoints[2][Config.test_waypoint_idx_speed]
         self.compute_speed(x,z)
         x,z =waypoints[0][Config.test_waypoint_idx_steer],waypoints[2][Config.test_waypoint_idx_steer]
-        self.compute_turn_angle(x,z,yaw,mouse)
+        self.compute_turn_angle(x,z)
         self.update_parameters()
 

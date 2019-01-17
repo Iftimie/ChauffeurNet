@@ -5,7 +5,7 @@ from simulator.util.Path import Path
 import torch
 from simulator.UI.GUI import GUI
 from simulator.UI.Record import EventBag
-from simulator.control.NeuralController import NeuralController
+from simulator.control.car_controller.NeuralController import NeuralController
 from config import Config
 
 

@@ -9,9 +9,9 @@ from download_data import check_if_data_exists
 def main():
     check_if_data_exists()
 
-    edit_world = False
-    record = True
-    do_train = True
+    edit_world = True
+    record = False
+    do_train = False
     just_test_network = False
 
     if edit_world:

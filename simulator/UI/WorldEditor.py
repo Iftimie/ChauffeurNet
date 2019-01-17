@@ -28,6 +28,8 @@ BACKSPACE exit
 
 class WorldEditor(GUI):
 
+    camera = None
+
     def __init__(self, world_path=""):
         super(WorldEditor, self).__init__("Editor", world_path)
 
@@ -38,12 +40,14 @@ class WorldEditor(GUI):
 
     #@Override
     def run(self):
+        WorldEditor.camera = self.camera
         while self.running:
             super(WorldEditor, self).interpretIO_and_render()
 
             if self.selected_actor is not None:
                 self.selected_actor.interpret_key(self.pressed_key)
                 self.selected_actor.interpret_mouse(GUI.mouse_world)
+            self.world.simulate(self.pressed_key, GUI.mouse_world)
 
     def select_camera_immediately(self):
         if self.selected_actor != None:
@@ -61,7 +65,7 @@ class WorldEditor(GUI):
         if key == 49:
             new_actor = LaneMarking()
         if key == 50:
-            new_actor = TrafficLight()
+            new_actor = TrafficLight(self.camera)
         if key ==51:
             new_actor = CurvedLaneMarking(arc_degree = 60, radius =300)
         if key == 52:
