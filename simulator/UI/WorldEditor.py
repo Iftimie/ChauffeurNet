@@ -43,7 +43,8 @@ class WorldEditor(GUI):
         WorldEditor.camera = self.camera
         while self.running:
             super(WorldEditor, self).interpretIO_and_render()
-
+            if GUI.mouse[2] == 1:
+                print (GUI.mouse_on_world(GUI.mouse,self.camera).T)
             if self.selected_actor is not None:
                 self.selected_actor.interpret_key(self.pressed_key)
                 self.selected_actor.interpret_mouse(GUI.mouse_world)

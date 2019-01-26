@@ -35,10 +35,11 @@ def synchronized(wrapped):
 
 class World(Actor):
 
-    def __init__(self, actors = [], world_path = "" ):
+    def __init__(self, actors = [], world_path = "", traffic_lights_path = "" ):
         super().__init__()
         self.actors = actors
         self.save_path = world_path
+        self.traffic_lights_path = traffic_lights_path
         pass
 
     #@Override
@@ -119,4 +120,6 @@ class World(Actor):
                 instance.from_h5py(file[class_name][i])
                 self.actors.append(instance)
         file.close()
+
+
         del file
