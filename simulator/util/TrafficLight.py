@@ -20,7 +20,7 @@ class TrafficLight(Actor):
         self.colours = {"green":(0,255,0),
                         "yellow":(0, 255,255),
                         "red":(0,0,255),
-                        "gray":(30,30,30)}
+                        "gray":(15,15,15)}
         self.time_colours = {"green":330,
                             "yellow":60,
                             "red":330}

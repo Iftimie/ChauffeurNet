@@ -11,7 +11,7 @@ from config import Config
 
 class Vehicle(Actor):
 
-    def __init__(self, camera = None, play = True, traffic_lights=[]):
+    def __init__(self, camera = None, play = True, traffic_lights=[], all_actors = []):
         """
         transform: 4x4 matrix to transform from local system to world system
         vertices_L: point locations expressed in local coordinate system in centimeters. vertices matrix will have shape
@@ -37,6 +37,7 @@ class Vehicle(Actor):
         self.displacement_vector = np.array([[0, 0, Config.displace_z, 1]]).T
         self.traffic_lights = traffic_lights
         self.attached_traffic_light = None
+        self.all_actors = all_actors
 
         self.init_kinematic_vars()
         self.init_reneder_options(play)
@@ -199,6 +200,15 @@ class Vehicle(Actor):
         z += rotated_displacement_vector[2]
         self.camera.set_transform(x, y_c, z, roll_c, yaw, pitch_c)
 
+    def render_on_top(self, traffic_light):
+        for actor in self.all_actors[:]:
+            if actor == traffic_light:
+                self.all_actors.remove(actor)
+                self.all_actors.append(actor)
+                print ("Moved on top")
+                break
+
+
     def check_traffic_lights(self):
 
         x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.get_transform()
@@ -212,12 +222,15 @@ class Vehicle(Actor):
             min_distance_for_tl = distance.min()
             if min_distance_for_tl > 500:
                 traffic_light.attached_to_vehicle = False
-                self.attached_traffic_light = None
+                if self.attached_traffic_light == traffic_light:
+                    self.attached_traffic_light = None
+                # print ("tl detached from vehicle")
             else:
                 if self.attached_traffic_light is  None:
                     traffic_light.attached_to_vehicle = True
                     self.attached_traffic_light = traffic_light
-            pass
+                    self.render_on_top(traffic_light)
+                    # print("tl attached to vehicle")
 
     def set_transform(self, x=None, y=None, z=None, roll=None, yaw=None, pitch=None):
         super(Vehicle, self).set_transform(x,y,z,roll,yaw, pitch)

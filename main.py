@@ -8,6 +8,9 @@ from download_data import check_if_data_exists
 #https://github.com/skvark/opencv-python/issues/154
 #https://www.microsoft.com/en-us/software-download/mediafeaturepack
 
+#notes. when editing world. make sure that lanes are a plane object, make sure that they have a center, make sure to to export all
+#TODO save .blend file somewhere with the world
+
 def main():
     check_if_data_exists()
 
@@ -16,7 +19,7 @@ def main():
     just_test_network = False
 
     if record:
-        recorder = Recorder(event_bag_path="data/recorded_states.pkl", world_path="data/world.obj")
+        recorder = Recorder(event_bag_path="data/recorded_states.pkl", world_path="data/cacatpansat.obj")
         recorder.run()
 
     if do_train:
