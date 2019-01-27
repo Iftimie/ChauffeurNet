@@ -204,16 +204,19 @@ class Vehicle(Actor):
         x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.get_transform()
         vehicle_pos = np.array([[x_c, 0, z_c, 1]]).T
 
-        closest_id = None
-        min_distance = 99999999.0
+        # The following logic selects the closest traffic light and its color remains active (not gray) while the vehicle is still on the traffic light
+        # closest_id = None
+        # min_distance = 99999999.0
         for traffic_light in self.traffic_lights:
             distance = np.sqrt(np.sum(np.square(traffic_light.vertices_W - vehicle_pos), axis=0))
             min_distance_for_tl = distance.min()
             if min_distance_for_tl > 500:
                 traffic_light.attached_to_vehicle = False
+                self.attached_traffic_light = None
             else:
-                traffic_light.attached_to_vehicle = True
-                # self.attached_traffic_light = traffic_light
+                if self.attached_traffic_light is  None:
+                    traffic_light.attached_to_vehicle = True
+                    self.attached_traffic_light = traffic_light
             pass
 
     def set_transform(self, x=None, y=None, z=None, roll=None, yaw=None, pitch=None):
