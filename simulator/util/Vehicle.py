@@ -226,7 +226,7 @@ class Vehicle(Actor):
         for traffic_light in self.traffic_lights:
             distance = np.sqrt(np.sum(np.square(traffic_light.vertices_W - vehicle_pos), axis=0))
             min_distance_for_tl = distance.min()
-            if min_distance_for_tl > 500:
+            if min_distance_for_tl > 200:
                 traffic_light.attached_to_vehicle = False
                 if self.attached_traffic_light == traffic_light:
                     self.attached_traffic_light = None
