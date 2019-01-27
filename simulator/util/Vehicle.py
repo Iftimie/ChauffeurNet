@@ -11,13 +11,15 @@ from config import Config
 
 class Vehicle(Actor):
 
-    def __init__(self, camera = None, play = True):
+    def __init__(self, camera = None, play = True, traffic_lights=[]):
         """
         transform: 4x4 matrix to transform from local system to world system
         vertices_L: point locations expressed in local coordinate system in centimeters. vertices matrix will have shape
                 4xN
         vertices_W: point locations expressed in world coordinate system
         play: if playing, the colours and the shape of the future positions will be different
+
+        traffic_lights can be empty list
         """
         super().__init__()
         self.c = (200,200,200)
@@ -33,6 +35,7 @@ class Vehicle(Actor):
         self.camera = camera
         self.camera.set_transform(y=Config.cam_height)
         self.displacement_vector = np.array([[0, 0, Config.displace_z, 1]]).T
+        self.traffic_lights = traffic_lights
 
         self.init_kinematic_vars()
         self.init_reneder_options(play)
@@ -62,7 +65,6 @@ class Vehicle(Actor):
 
         self.render_past_locations_thickness = 8
         self.render_past_locations_radius = 2
-
 
     def get_relevant_states(self):
         #It should contain only primitive datatypes, numpy arrays, lists of numpy arrays, no other User defined class
@@ -196,9 +198,23 @@ class Vehicle(Actor):
         z += rotated_displacement_vector[2]
         self.camera.set_transform(x, y_c, z, roll_c, yaw, pitch_c)
 
+    def check_traffic_lights(self):
+
+        x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.get_transform()
+        vehicle_pos = np.array([[x_c, 0, z_c, 1]]).T
+
+        closest_id = None
+        min_distance = 99999999.0
+        for traffic_light in self.traffic_lights:
+            distance = np.sqrt(np.sum(np.square(traffic_light.vertices_W - vehicle_pos), axis=0))
+            min_distance_for_tl = distance.min()
+            pass
+
     def set_transform(self, x=None, y=None, z=None, roll=None, yaw=None, pitch=None):
         super(Vehicle, self).set_transform(x,y,z,roll,yaw, pitch)
         self.set_camera_relative_transform(x,y,z,roll,yaw, pitch)
+
+        self.check_traffic_lights()
 
     def simulate(self, key_pressed, mouse):
         self.interpret_key(key_pressed)

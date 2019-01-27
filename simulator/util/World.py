@@ -52,7 +52,6 @@ class World(Actor):
         return image
 
 
-
     # @Override
     def simulate(self, pressed_key=None, mouse=None):
         for actor in self.actors:
@@ -123,15 +122,21 @@ class World(Actor):
             if line[0] == "o":
                 object_name = line.split(" ")[-1].replace("\n", "")
                 object_vertices = []
+                object_lines = []
                 i += 1
                 while i < len(all_lines) and all_lines[i][0] == "v":
                     object_vertices.append(all_lines[i])
                     i += 1
-                all_objects[object_name] = object_vertices
-            i += 1
+                while i < len(all_lines) and all_lines[i][0] == "l":
+                    object_lines.append(all_lines[i])
+                    i +=1
+                all_objects[object_name] = {"verts":object_vertices,
+                                            "lines":object_lines}
+            else:
+                i += 1
 
         for objname in all_objects.keys():
-            object_vertices = all_objects[objname]
+            object_vertices = all_objects[objname]["verts"]
             vertices_numeric = []
             for vertex in object_vertices:
                 coords_str = vertex.replace("v ", "").replace("\n", "").split(" ") + ["1.0"]
@@ -139,20 +144,47 @@ class World(Actor):
                 vertices_numeric.append(coords_numeric)
             vertices_numeric = np.array(vertices_numeric).T
             vertices_numeric[:3,:] *= Config.world_scale_factor
-            all_objects[objname] = vertices_numeric
+            vertices_numeric[0,:] *= Config.scale_x
+
+            all_objects[objname]["verts"] = vertices_numeric
+
+            object_lines = all_objects[objname]["lines"]
+            lines_numeric = []
+            for line in object_lines:
+                lines_str = line.replace("l ", "").replace("\n", "").split(" ")
+                lines_inds_numeric = [int(value) for value in lines_str]
+                lines_numeric.append(lines_inds_numeric)
+            lines_numeric = np.array(lines_numeric)
+            lines_numeric -= lines_numeric.min()
+            all_objects[objname]["lines"] = lines_numeric
 
         return all_objects
 
+    def get_traffic_lights(self):
+        from simulator.util.TrafficLight import TrafficLight
+        list_traffic_lights  = []
+        for actor in self.actors:
+            if type(actor) is TrafficLight:
+                list_traffic_lights.append(actor)
+        return list_traffic_lights
+
     def load_world(self):
         from simulator.util.LaneMarking import LaneMarking
+        from simulator.util.TrafficLight import TrafficLight
         if not os.path.exists(self.save_path):
             raise ("No world available")
         all_objects = self.read_obj_file(self.save_path)
+
         for obj_name in all_objects.keys():
             if "lane" in obj_name:
                 lane_instance = LaneMarking()
-                lane_instance.vertices_W = all_objects[obj_name]
+                lane_instance.vertices_W = all_objects[obj_name]["verts"]
                 self.actors.append(lane_instance)
+            if  "tl" in obj_name:
+                traffic_light_instance = TrafficLight(obj_name)
+                traffic_light_instance.vertices_W = all_objects[obj_name]["verts"]
+                traffic_light_instance.line_pairs = all_objects[obj_name]["lines"]
+                self.actors.append(traffic_light_instance)
 
         # file = h5py.File(self.save_path, "r")
         # for class_name in file.keys():

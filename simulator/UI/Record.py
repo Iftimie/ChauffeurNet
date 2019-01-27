@@ -18,7 +18,7 @@ class Recorder(GUI):
 
     def __init__(self, event_bag_path="", world_path="" ):
         super(Recorder, self).__init__("Simulator", world_path=world_path)
-        self.vehicle = Vehicle(self.camera)
+        self.vehicle = Vehicle(camera=self.camera, play=True, traffic_lights=self.world.get_traffic_lights())
         self.world.actors.append(self.vehicle)
         self.vehicle.is_active = True
         self.vehicle.render_next_locations_by_steering = True

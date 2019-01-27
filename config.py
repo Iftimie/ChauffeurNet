@@ -35,7 +35,7 @@ class Config:
     cam_height = -1200
 
     #Vehicle params
-    vehicle_x = 180     #initial vehicle location x
+    vehicle_x = -80     #initial vehicle location x
     vehicle_z = -300     #initial vehicle location z
     displace_z = -100   #camera dispacement
 
@@ -64,4 +64,6 @@ class Config:
     linux_env = False
 
 
+    #from fucking blender obj export. I need to rotate and scale some things
     world_scale_factor = 70
+    scale_x = -1
