@@ -36,6 +36,7 @@ class Vehicle(Actor):
         self.camera.set_transform(y=Config.cam_height)
         self.displacement_vector = np.array([[0, 0, Config.displace_z, 1]]).T
         self.traffic_lights = traffic_lights
+        self.attached_traffic_light = None
 
         self.init_kinematic_vars()
         self.init_reneder_options(play)
@@ -208,6 +209,11 @@ class Vehicle(Actor):
         for traffic_light in self.traffic_lights:
             distance = np.sqrt(np.sum(np.square(traffic_light.vertices_W - vehicle_pos), axis=0))
             min_distance_for_tl = distance.min()
+            if min_distance_for_tl > 500:
+                traffic_light.attached_to_vehicle = False
+            else:
+                traffic_light.attached_to_vehicle = True
+                # self.attached_traffic_light = traffic_light
             pass
 
     def set_transform(self, x=None, y=None, z=None, roll=None, yaw=None, pitch=None):

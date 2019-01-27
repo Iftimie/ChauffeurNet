@@ -19,7 +19,8 @@ class TrafficLight(Actor):
 
         self.colours = {"green":(0,255,0),
                         "yellow":(0, 255,255),
-                        "red":(0,0,255),}
+                        "red":(0,0,255),
+                        "gray":(30,30,30)}
         self.time_colours = {"green":330,
                             "yellow":60,
                             "red":330}
@@ -28,16 +29,25 @@ class TrafficLight(Actor):
         self.c = self.colours[self.state]
         self.crt_idx = 0
 
+        self.attached_to_vehicle = False
+
     def next_colour(self):
-        if self.state == "green":
-            self.c = self.colours["yellow"]
-            self.state = "yellow"
-        elif self.state == "yellow":
-            self.c = self.colours["red"]
-            self.state = "red"
-        elif self.state == "red":
-            self.c = self.colours["green"]
-            self.state = "green"
+
+        if self.crt_idx % self.time_colours[self.state] == 0:
+            if self.state == "green":
+                self.state = "yellow"
+            elif self.state == "yellow":
+                self.state = "red"
+            elif self.state == "red":
+                self.state = "green"
+        self.crt_idx +=1
+
+        if self.attached_to_vehicle:
+            self.c = self.colours[self.state]
+        else:
+            self.c = self.colours["gray"]
+
+
 
     def simulate(self, pressed_key, mouse):
         pass
@@ -50,10 +60,9 @@ class TrafficLight(Actor):
         :return:      image with this object renderd
         """
 
-        if self.crt_idx % self.time_colours[self.state] == 0:
-            self.next_colour()
 
-        self.crt_idx +=1
+        self.next_colour()
+
 
         if self.vertices_W.shape[1] > 1:
             x, y = C.project(self.vertices_W)
