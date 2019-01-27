@@ -205,7 +205,13 @@ class Vehicle(Actor):
             if actor == traffic_light:
                 self.all_actors.remove(actor)
                 self.all_actors.append(actor)
-                print ("Moved on top")
+                print ("Moved traffic light on top of other traffic lights")
+                break
+        for actor in self.all_actors[:]:
+            if actor == self:
+                self.all_actors.remove(actor)
+                self.all_actors.append(actor)
+                print ("Moved vehicle on top of all traffic lights")
                 break
 
 
