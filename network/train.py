@@ -47,7 +47,7 @@ class ConfigSimpleConv(Config):
         self.shuffle        = True
         self.epochs         = 100
         self.event_bag_path = os.path.join(root_path,"data/recorded_states.pkl")
-        self.world_path     = os.path.join(root_path,"data/world.h5")
+        self.world_path     = os.path.join(root_path,"data/world.obj")
         self.log_interval   = 100
         self.experiment_name = "whatever"
         self.paths_to_copy = [os.path.join(root_path,"network/models/SimpleConv.py"),

@@ -1,4 +1,3 @@
-from simulator.UI.WorldEditor import WorldEditor
 from network.train import ConfigSimpleConv
 from simulator.UI.TestNetwork import Simulator
 from simulator.UI.Record import Recorder
@@ -12,17 +11,12 @@ from download_data import check_if_data_exists
 def main():
     check_if_data_exists()
 
-    edit_world = True
-    record = False
+    record = True
     do_train = False
     just_test_network = False
 
-    if edit_world:
-        worldEditor = WorldEditor("data/world.h5")
-        worldEditor.run()
-
     if record:
-        recorder = Recorder(event_bag_path="data/recorded_states.pkl", world_path="data/world.h5")
+        recorder = Recorder(event_bag_path="data/recorded_states.pkl", world_path="data/world.obj")
         recorder.run()
 
     if do_train:
@@ -32,7 +26,7 @@ def main():
 
     if just_test_network:
         simulator = Simulator(event_bag_path="data/recorded_states.pkl", network_path="data/ChauffeurNet.pt" ,
-                              world_path="data/world.h5")
+                              world_path="data/world.obj")
         simulator.run()
 
 

@@ -37,14 +37,14 @@ class Vehicle(Actor):
         self.init_kinematic_vars()
         self.init_reneder_options(play)
 
-        self.set_transform(x=Config.vehicle_x)
+        self.set_transform(x=Config.vehicle_x, z=Config.vehicle_z)
 
     def init_kinematic_vars(self):
         # Kinematic network and variables as in:
         # https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/10-Unscented-Kalman-Filter.ipynb
         self.turn_angle = 0  # alpha in radians
         self.wheel_base = 120  # W length of car
-        self.speed = 0  # d
+        self.speed = 1  # d
         self.delta = 1  # unit of time here (unlike in World editor which is displacement.
         self.range_angle = (-0.785398, 0.785398)
 

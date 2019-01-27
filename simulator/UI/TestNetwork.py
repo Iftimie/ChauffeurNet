@@ -55,5 +55,5 @@ class Simulator(GUI):
 
 if __name__ =="__main__":
     simulator = Simulator(event_bag_path="../../data/recorded_states.pkl", network_path="../../data/ChauffeurNet.pt",
-                          world_path="../../data/world.h5" )
+                          world_path="../../data/world.obj" )
     simulator.run()

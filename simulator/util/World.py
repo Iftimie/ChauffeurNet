@@ -11,6 +11,7 @@ import random
 import string
 import h5py
 import numpy as np
+from config import Config
 import importlib
 
 
@@ -104,22 +105,65 @@ class World(Actor):
             self.actors.append(camera)
         return camera
 
-    @synchronized
+    def read_obj_file(self, path):
+
+        #TODO might need to read the lines between vertices
+        #TODO
+        #TODO
+
+        with open(path) as file:
+            all_lines = file.readlines()
+            file.close()
+
+        all_objects = {}
+        i = 0
+        while i < len(all_lines):
+            line = all_lines[i]
+
+            if line[0] == "o":
+                object_name = line.split(" ")[-1].replace("\n", "")
+                object_vertices = []
+                i += 1
+                while i < len(all_lines) and all_lines[i][0] == "v":
+                    object_vertices.append(all_lines[i])
+                    i += 1
+                all_objects[object_name] = object_vertices
+            i += 1
+
+        for objname in all_objects.keys():
+            object_vertices = all_objects[objname]
+            vertices_numeric = []
+            for vertex in object_vertices:
+                coords_str = vertex.replace("v ", "").replace("\n", "").split(" ") + ["1.0"]
+                coords_numeric = [float(value) for value in coords_str]
+                vertices_numeric.append(coords_numeric)
+            vertices_numeric = np.array(vertices_numeric).T
+            vertices_numeric[:3,:] *= Config.world_scale_factor
+            all_objects[objname] = vertices_numeric
+
+        return all_objects
+
     def load_world(self):
+        from simulator.util.LaneMarking import LaneMarking
         if not os.path.exists(self.save_path):
             raise ("No world available")
-        file = h5py.File(self.save_path, "r")
-        for class_name in file.keys():
-            # module_imported =importlib.import_module("util")
-            #If error while doing instance = class_(). Check if the imported class is listed in __init__.py
-            module_imported =importlib.import_module(sys.modules[__name__].__package__)
-            class_ = getattr(module_imported, class_name)
-            for i in range(file[class_name].shape[0]):
-                instance = class_()
+        all_objects = self.read_obj_file(self.save_path)
+        for obj_name in all_objects.keys():
+            if "lane" in obj_name:
+                lane_instance = LaneMarking()
+                lane_instance.vertices_W = all_objects[obj_name]
+                self.actors.append(lane_instance)
 
-                instance.from_h5py(file[class_name][i])
-                self.actors.append(instance)
-        file.close()
+        # file = h5py.File(self.save_path, "r")
+        # for class_name in file.keys():
+        #     # module_imported =importlib.import_module("util")
+        #     #If error while doing instance = class_(). Check if the imported class is listed in __init__.py
+        #     module_imported =importlib.import_module(sys.modules[__name__].__package__)
+        #     class_ = getattr(module_imported, class_name)
+        #     for i in range(file[class_name].shape[0]):
+        #         instance = class_()
+        #
+        #         instance.from_h5py(file[class_name][i])
+        #         self.actors.append(instance)
+        # file.close()
 
-
-        del file

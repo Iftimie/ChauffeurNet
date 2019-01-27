@@ -1,5 +1,8 @@
-from .Actor import Actor
+from simulator.util.Actor import Actor
 import numpy as np
+import cv2
+from math import ceil
+from config import Config
 
 class LaneMarking(Actor):
 
@@ -11,11 +14,20 @@ class LaneMarking(Actor):
         vertices_W: point locations expressed in world coordinate system
         """
         super().__init__()
-        self.vertices_L = np.array([[-5, 0, -100, 1], #x, y, z   x increases to right, y up, z forward
-                                    [-5, 0,  100, 1],
-                                    [5, 0,  100, 1],
-                                    [5, 0,  -100, 1]]).T
-        self.vertices_W = self.T.dot(self.vertices_L)
+        self.vertices_W = None
         self.c = (150,150,150)
 
+    def render(self, image, C):
+        """
+        :param image: image on which this actor will be renderd on
+        :param C:     camera matrix
+        :return:      image with this object renderd
+        """
+        if self.vertices_W.shape[1] > 1:
+            x, y = C.project(self.vertices_W)
+            pts = np.array([x, y]).T
+            pts = pts.reshape((-1, 1, 2))
+            thick = int(ceil(self.render_thickness / Config.r_ratio))
+            image = cv2.polylines(image, [pts], False, color=self.c,thickness= thick)
+        return image
 

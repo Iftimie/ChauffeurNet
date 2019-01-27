@@ -85,7 +85,7 @@ class Renderer:
 
 if __name__ =="__main__":
 
-    renderer = Renderer( world_path= "../../data/world.h5",
+    renderer = Renderer( world_path= "../../data/world.obj",
                          h5_path="../../data/pytorch_data.h5",
                          event_bag_path="../../data/recorded_states.pkl",
                          overwrite=True,

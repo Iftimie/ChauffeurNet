@@ -31,7 +31,7 @@ def save_response_content(response, destination):
                 f.write(chunk)
 def check_if_data_exists():
     #https://drive.google.com/open?id=1KUaeIqIQh8ECjNdIFieVa6MW7DYgVrwg
-    required_files = [['1azkG7nXZhsVbBD04ka8D8S-YQyHmT_6W',  'data/world.h5'],
+    required_files = [['1azkG7nXZhsVbBD04ka8D8S-YQyHmT_6W',  'data/world.obj'],
                       ['1yPmdlxo-Uhc7jrXnOtx-E6_89FFKVofM', 'data/recorded_states.pkl'],
                       ['1KUaeIqIQh8ECjNdIFieVa6MW7DYgVrwg', 'data/ChauffeurNet.pt']]
     if not os.path.exists("data"):

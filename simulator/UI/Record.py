@@ -102,5 +102,5 @@ class EventBag:
 
 
 if __name__ == "__main__":
-    recorder = Recorder(event_bag_path="../../data/recorded_states.pkl", world_path="../../data/world.h5")
+    recorder = Recorder(event_bag_path="../../data/recorded_states.pkl", world_path="../../data/world.obj")
     recorder.run()

@@ -35,7 +35,8 @@ class Config:
     cam_height = -1200
 
     #Vehicle params
-    vehicle_x = 100     #initial vehicle location x
+    vehicle_x = 180     #initial vehicle location x
+    vehicle_z = -300     #initial vehicle location z
     displace_z = -100   #camera dispacement
 
     #Google path length
@@ -61,3 +62,6 @@ class Config:
     min_waypoint_distance = 0 # this is for test_waypoint_idx_speed 5
 
     linux_env = False
+
+
+    world_scale_factor = 70
