@@ -1,10 +1,13 @@
 from simulator.UI.WorldEditor import WorldEditor
-from simulator.UI.DataGeneration import Renderer
 from network.train import ConfigSimpleConv
 from simulator.UI.TestNetwork import Simulator
 from simulator.UI.Record import Recorder
 from download_data import check_if_data_exists
 
+
+#if errors about opencv DLL
+#https://github.com/skvark/opencv-python/issues/154
+#https://www.microsoft.com/en-us/software-download/mediafeaturepack
 
 def main():
     check_if_data_exists()
