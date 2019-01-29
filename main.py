@@ -15,8 +15,8 @@ def main():
     check_if_data_exists()
 
     record = False
-    do_train = False
-    just_test_network = True
+    do_train = True
+    just_test_network = False
 
     if record:
         recorder = Recorder(event_bag_path="data/recorded_states.pkl", world_path="data/world.obj")

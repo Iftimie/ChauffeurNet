@@ -42,7 +42,7 @@ class ConfigSimpleConv(Config):
         from network.models.SimpleConv import ChauffeurNet
         from network.models.Dataset import DrivingDataset
         from network.models.TrainUtil import train_simple_conv
-        self.batch_size     = 16
+        self.batch_size     = 64
         self.lr             = 0.005
         self.shuffle        = True
         self.epochs         = 100
@@ -60,7 +60,7 @@ class ConfigSimpleConv(Config):
                                                                                  debug=False),
                                                batch_size=self.batch_size,
                                                shuffle=self.shuffle,
-                                                num_workers=4)
+                                                num_workers=16)
 
         # self.model.load_state_dict(torch.load("../experiments/2018-12-21_21-38-57_whatever/checkpoints/ChauffeurNet_99_120.pt"))
 

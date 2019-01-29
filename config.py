@@ -26,7 +26,7 @@ class Config:
     test_waypoint_idx_speed = 5
     horizon_past = 8
     horizon_future = 8
-    num_skip_poses = 12
+    num_skip_poses = 10
     num_past_poses = horizon_past * num_skip_poses
     num_future_poses = horizon_future * num_skip_poses
     rnn_num_channels = 32
@@ -61,7 +61,7 @@ class Config:
     max_waypoint_distance = (test_waypoint_idx_speed * num_skip_poses * max_speed) / 2
     min_waypoint_distance = 0 # this is for test_waypoint_idx_speed 5
 
-    linux_env = False
+    linux_env = True
 
 
     #from fucking blender obj export. I need to rotate and scale some things
