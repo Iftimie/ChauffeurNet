@@ -13,7 +13,7 @@ class Simulator(GUI):
 
     def __init__(self, event_bag_path = "", network_path = "", world_path=""):
         super(Simulator, self).__init__("Simulator", world_path=world_path)
-        self.vehicle = Vehicle(self.camera)
+        self.vehicle = Vehicle(self.camera, traffic_lights=self.world.get_traffic_lights(), all_actors=self.world.actors)
         self.world.actors.append(self.vehicle)
 
         #event_bag represents the data that the user generated. Has values such as the key pressed, and mouse
