@@ -16,7 +16,7 @@ class TrafficLight(Actor):
         self.T = np.eye(4, dtype=np.float32)
         self.vertices_W = None
         self.line_pairs = None
-
+        self.obj_name = obj_name
         self.colours = {"green":(0,255,0),
                         "yellow":(0, 255,255),
                         "red":(0,0,255),
@@ -53,15 +53,15 @@ class TrafficLight(Actor):
         pass
 
 
-    def render(self, image, C):
+    def render(self, image, C, simulation_time=True):
         """
         :param image: image on which this actor will be renderd on
         :param C:     camera matrix
         :return:      image with this object renderd
         """
 
-
-        self.next_colour()
+        if simulation_time:
+            self.next_colour()
 
 
         if self.vertices_W.shape[1] > 1:

@@ -49,7 +49,7 @@ class Config:
 
     #Dropout
     num_frames = 70
-    dropout_prob = 0.5
+    dropout_prob = 0.2
     amplitude_range = (0.5/10, 2/10)
 
     normalizing_speed = 10.0

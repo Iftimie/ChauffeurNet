@@ -11,6 +11,7 @@ from simulator.util.Path import Path
 import cv2
 from simulator.util.Camera import Camera
 from simulator.util.LaneMarking import LaneMarking
+from simulator.util.TrafficLight import TrafficLight
 
 class EnumIndices:
     turn_angle_start_idx = 0
@@ -31,6 +32,7 @@ class DrivingDataset(Dataset):
         self.camera = self.world.get_camera_from_actors()
         self.vehicle = Vehicle(self.camera, play=False)
         self.world.actors.append(self.vehicle)
+        self.traffic_lights = self.world.get_traffic_lights()
 
         self.event_bag = EventBag(event_bag_path, record=False)
         self.path = Path(self.event_bag.list_states, debug=debug)
@@ -96,7 +98,32 @@ class DrivingDataset(Dataset):
         self.vehicle.vertices_W = self.vehicle.T.dot(self.vehicle.vertices_L)
         self.vehicle.speed = state["vehicle"]["speed"]
         self.vehicle.set_transform(*self.vehicle.get_transform())
+        for tl_tuple in state["traffic_lights"]:
+            tl_name, colour = tl_tuple[0], tl_tuple[1]
+            for tl_instance in self.traffic_lights:
+                if tl_instance.obj_name == tl_name:
+                    tl_instance.c = colour
+                    break
+        #move active tl on top for rendering. no need to move the car on top becuase it is drawn on a separate plane
+        for actor in self.world.actors[:]:
+            if type(actor) is TrafficLight:
+                if actor.c != (15,15,15):
+                    self.world.actors.remove(actor)
+                    self.world.actors.append(actor)
 
+        # def render_on_top(self, traffic_light):
+        #     for actor in self.all_actors[:]:
+        #         if actor == traffic_light:
+        #             self.all_actors.remove(actor)
+        #             self.all_actors.append(actor)
+        #             print("Moved traffic light on top of other traffic lights")
+        #             break
+        #     for actor in self.all_actors[:]:
+        #         if actor == self:
+        #             self.all_actors.remove(actor)
+        #             self.all_actors.append(actor)
+        #             print("Moved vehicle on top of all traffic lights")
+        #             break
         if self.vehicle.speed > 4:
             self.path.apply_dropout(idx, self.vehicle)
 
@@ -108,6 +135,12 @@ class DrivingDataset(Dataset):
         speed = np.array(self.vehicle.speed / Config.normalizing_speed, dtype=np.float32)
 
         future_penalty_maps = self.future_penalty_map(future_points)
+
+        if False:
+            debug_penalty_maps = (np.sum(np.squeeze(future_penalty_maps),axis=0) * 255).astype(np.uint8)
+            cv2.imshow("debug_penalty_maps", debug_penalty_maps)
+            cv2.waitKey(1000)
+
 
         sample = {'data': data,
                   'steering': steering,
@@ -126,6 +159,9 @@ class DrivingDataset(Dataset):
             if type(actor) is Camera: continue
             if type(actor) is LaneMarking:
                 image_lanes = actor.render(image_lanes, vehicle.camera)
+            if type(actor) is TrafficLight:
+                image_lanes = actor.render(image_lanes, vehicle.camera, simulation_time=False)
+
         image_vehicle = vehicle.render(image_vehicle, vehicle.camera)
         image_path = path.render(image_path, vehicle.camera, path_idx, vehicle)
 
@@ -133,7 +169,8 @@ class DrivingDataset(Dataset):
             image_agent_past_poses = vehicle.render_past_locations_func(image_agent_past_poses)
         elif mode =="train":
             image_agent_past_poses = path.render_past_locations_func(image_agent_past_poses, vehicle.camera, path_idx)
-        # image_lanes = self.vehicle.render(image_lanes, self.camera)
+        if False:
+            image_lanes = vehicle.render(image_lanes, vehicle.camera)
 
         input_planes = {"image_lanes": image_lanes,
                         "image_vehicle": image_vehicle,

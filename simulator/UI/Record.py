@@ -18,7 +18,8 @@ class Recorder(GUI):
 
     def __init__(self, event_bag_path="", world_path="" ):
         super(Recorder, self).__init__("Simulator", world_path=world_path)
-        self.vehicle = Vehicle(camera=self.camera, play=True, traffic_lights=self.world.get_traffic_lights(), all_actors=self.world.actors)
+        self.traffic_lights = self.world.get_traffic_lights()
+        self.vehicle = Vehicle(camera=self.camera, play=True, traffic_lights=self.traffic_lights, all_actors=self.world.actors)
         self.world.actors.append(self.vehicle)
         self.vehicle.is_active = True
         self.vehicle.render_next_locations_by_steering = True
@@ -45,6 +46,7 @@ class Recorder(GUI):
             to_save_dict["pressed_key"] = self.pressed_key
             to_save_dict["mouse"] = (GUI.mouse[0], GUI.mouse[1])
             to_save_dict["vehicle"] = self.vehicle.get_relevant_states()
+            to_save_dict["traffic_lights"] = [(tl.obj_name,tl.c) for tl in self.traffic_lights]
 
             self.event_bag.append(to_save_dict)
         self.event_bag.cleanup()

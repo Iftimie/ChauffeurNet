@@ -14,12 +14,12 @@ from download_data import check_if_data_exists
 def main():
     check_if_data_exists()
 
-    record = True
-    do_train = False
+    record = False
+    do_train = True
     just_test_network = False
 
     if record:
-        recorder = Recorder(event_bag_path="data/recorded_states.pkl", world_path="data/cacatpansat.obj")
+        recorder = Recorder(event_bag_path="data/recorded_states.pkl", world_path="data/world.obj")
         recorder.run()
 
     if do_train:

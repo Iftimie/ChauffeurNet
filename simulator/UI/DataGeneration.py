@@ -41,12 +41,6 @@ class Renderer:
         if self.dataset !=None:
             self.dataset.file.close()
 
-
-
-
-
-
-
     def render(self):
 
         if self.overwrite == False:return
