@@ -286,9 +286,10 @@ class Vehicle(Actor):
         desired = np.array([x, 0, z])
         difference = desired - current
         magnitude = np.linalg.norm(difference)
-        print (self.speed, magnitude)
         interp_obj = interp1d([Config.min_waypoint_distance, Config.max_waypoint_distance], [0, Config.max_speed], fill_value="extrapolate")
         self.speed = min(interp_obj(magnitude), Config.max_speed)
+        if self.speed < 0.1:
+            self.speed = 0
 
 
     def simulate_given_waypoints(self, waypoints):

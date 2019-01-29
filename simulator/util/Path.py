@@ -45,8 +45,8 @@ class Path(Actor):
         v_pos = np.array([[x_c, y_c, z_c, 1]]).T
         diff = self.vertices_W - v_pos
         diff_sq = diff * diff
-        offset = max(path_idx-100, 0)
-        diff_sq_sum = np.sum(diff_sq, axis=0)[offset:path_idx+100]
+        offset = max(path_idx-400, 0)
+        diff_sq_sum = np.sum(diff_sq, axis=0)[offset:path_idx+400]
 
         index = np.argmin(diff_sq_sum) + offset
         return index

@@ -26,7 +26,7 @@ class Config:
     test_waypoint_idx_speed = 5
     horizon_past = 8
     horizon_future = 8
-    num_skip_poses = 14
+    num_skip_poses = 12
     num_past_poses = horizon_past * num_skip_poses
     num_future_poses = horizon_future * num_skip_poses
     rnn_num_channels = 32

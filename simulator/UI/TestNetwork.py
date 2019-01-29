@@ -44,6 +44,8 @@ class Simulator(GUI):
                 waypoints_2D, path_idx = self.neural_controller.step(path_idx)
                 image_test_nn = self.render_input_nn(path_idx, waypoints_2D)
 
+                print(self.vehicle.speed)
+
                 cv2.imshow("Simulator", image_test_nn)
                 cv2.waitKey(1)
 

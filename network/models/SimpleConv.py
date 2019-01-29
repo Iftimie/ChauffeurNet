@@ -94,7 +94,7 @@ class WaypointHeatmap(nn.Module):
     def __init__(self):
         super(WaypointHeatmap, self).__init__()
 
-        self.conv1 = self.conv_block(Config.rnn_num_channels,1)
+        self.conv1 = self.conv_block(Config.rnn_num_channels,3)
         self.activation = nn.Softmax(dim=-1) # we want to do a spatial softmax
 
     def forward(self, x):
@@ -190,20 +190,35 @@ class ChauffeurNet(nn.Module):
 
     def process_waypoints(self, waypoints_pred):
 
-        waypoints_pred = torch.squeeze(waypoints_pred,0)
-        n = waypoints_pred.size(0)
-        d = waypoints_pred.size(3)
-        m = waypoints_pred.view(n, -1).argmax(1).view(-1, 1)
+        waypoints_pred_heatmap = waypoints_pred[0,:,[0],:,:]
+        n = waypoints_pred_heatmap.size(0)
+        d = waypoints_pred_heatmap.size(3)
+        m = waypoints_pred_heatmap.view(n, -1).argmax(1).view(-1, 1)
         indices = torch.cat((m // d, m % d), dim=1)
-        indices = indices.cpu().numpy()
-        indices *= int(Config.scale_factor)
+        indices_low_res = indices.cpu().numpy()
+        indices_hig_res = indices_low_res * int(Config.scale_factor)
+
         # This way it gets y and x
+
+        waypoints_pred_regr_offset_x = waypoints_pred[0,:,[1],:,:]
+        waypoints_pred_regr_offset_y = waypoints_pred[0,:,[2],:,:]
+        #don't know how to vectorize indexing...
+
+        indices_offset = []
+        for i in range(indices_low_res.shape[0]):
+            deltas_y_x = []
+            deltas_y_x.append(waypoints_pred_regr_offset_y[i, 0, indices_low_res[i, 0], indices_low_res[i, 1]])
+            deltas_y_x.append(waypoints_pred_regr_offset_x[i,0,indices_low_res[i,0], indices_low_res[i,1]])
+            indices_offset.append(deltas_y_x)
+        indices_offset = np.array(indices_offset)
+        indices_hig_res += (indices_offset * int(Config.scale_factor)).astype(np.int64)
+
 
         if False:
             for i in range(8):
-                waypoints_pred = waypoints_pred.cpu()
+                waypoints_pred_heatmap = waypoints_pred_heatmap.cpu()
                 plt.clf()
-                plt.imshow(np.squeeze(waypoints_pred[i, 0, ...]))
+                plt.imshow(np.squeeze(waypoints_pred_heatmap[i, 0, ...]))
                 plt.colorbar()
                 plt.show()
         return indices
@@ -223,19 +238,22 @@ class ChauffeurNet(nn.Module):
         loss = loss.mean()
         return loss
 
-    def waypoints_loss(self, future_penalty_maps,waypoints_pred):
+    def waypoints_loss(self, future_penalty_maps, future_poses_regr_offset, waypoints_pred):
         #some sort of focal loss. taken from
         #https://github.com/princeton-vl/CornerNet/blob/master/models/py_utils/kp_utils.py
         #https://arxiv.org/pdf/1808.01244.pdf    eq (1)
+
+        ########################################################################################################################################################################
         pos_inds = future_penalty_maps.eq(1)
         neg_inds = future_penalty_maps.lt(1)
 
         neg_weights = torch.pow(1 - future_penalty_maps[neg_inds], 4).float()
-        loss = 0
+        heatmap_loss = 0
 
-        pos_pred = waypoints_pred[pos_inds]
-        neg_pred = waypoints_pred[neg_inds]
+        waypoints_pred_heatmap = waypoints_pred[:,:,[0],...] #the first channel is the waypoint, the second and the third are the regression offsets for that waypoint
 
+        pos_pred = waypoints_pred_heatmap[pos_inds]
+        neg_pred = waypoints_pred_heatmap[neg_inds]
 
         pos_loss = torch.log(pos_pred) * torch.pow(1 - pos_pred, 2)
         neg_loss = torch.log(1 - neg_pred) * torch.pow(neg_pred, 2) * neg_weights
@@ -245,22 +263,51 @@ class ChauffeurNet(nn.Module):
         neg_loss = neg_loss.sum()
 
         if pos_pred.nelement() == 0:
-            loss = loss - neg_loss
+            heatmap_loss = heatmap_loss - neg_loss
         else:
-            loss = loss - (pos_loss + neg_loss) / num_pos
-        return loss
+            heatmap_loss = heatmap_loss - (pos_loss + neg_loss) / num_pos
+
+        ########################################################################################################################################################################
+        ########################################################################################################################################################################
+
+
+        waypoints_pred_regression_x = waypoints_pred[:, :, [1], ...]
+        waypoints_pred_regression_y = waypoints_pred[:, :, [2], ...]
+        future_poses_regr_offset_x = future_poses_regr_offset[:, :, [0], ...]
+        future_poses_regr_offset_y = future_poses_regr_offset[:, :, [1], ...]
+
+        pos_pred_x = waypoints_pred_regression_x[pos_inds]
+        pos_targ_x = future_poses_regr_offset_x[pos_inds]
+        # neg_pred_x = waypoints_pred_regression_x[neg_inds]
+        # neg_targ_x = future_poses_regr_offset_x[neg_inds]
+
+        pos_pred_y = waypoints_pred_regression_y[pos_inds]
+        pos_targ_y = future_poses_regr_offset_y[pos_inds]
+        # neg_pred_y = waypoints_pred_regression_y[neg_inds]
+        # neg_targ_y = future_poses_regr_offset_y[neg_inds]
+
+        offset_regression_loss = 0
+        offset_regression_loss += torch.nn.functional.smooth_l1_loss(input=pos_pred_x, target=pos_targ_x)
+        offset_regression_loss += torch.nn.functional.smooth_l1_loss(input=pos_pred_y, target=pos_targ_y)
+        offset_regression_loss /= num_pos
+
+        ########################################################################################################################################################################
+
+        total_loss = heatmap_loss + offset_regression_loss
+        return total_loss
 
     def compute_loss(self, nn_outputs, sampled_batch, cfg):
         steering_gt = sampled_batch['steering'].to(cfg.device)
         speed_gt = sampled_batch['speed'].to(cfg.device)
         future_penalty_maps = sampled_batch['future_penalty_maps'].to(cfg.device)
+        future_poses_regr_offset = sampled_batch['future_poses_regr_offset'].to(cfg.device)
 
 
         loss = 0
         if "steering" in nn_outputs:
             loss += self.steering_weighted_loss(steering_gt, nn_outputs["steering"])
         if "waypoints" in nn_outputs:
-            loss += self.waypoints_loss(future_penalty_maps, nn_outputs["waypoints"])
+            loss += self.waypoints_loss(future_penalty_maps,future_poses_regr_offset, nn_outputs["waypoints"])
         if "speed" in nn_outputs:
             loss += self.criterion_speed(speed_gt, nn_outputs["speed"]) / cfg.batch_size
 

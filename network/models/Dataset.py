@@ -64,7 +64,8 @@ class DrivingDataset(Dataset):
 
         points = np.reshape(points,(-1,2))
         num_points = points.shape[0]
-        future_poses = np.zeros((num_points, 1, Config.o_res[0], Config.o_res[1]))
+        future_poses = np.zeros((num_points, 1, Config.o_res[0], Config.o_res[1]), np.float32)
+        future_poses_regr_offset = np.zeros((num_points, 2, Config.o_res[0], Config.o_res[1]), np.float32)
 
         for i in range(num_points):
             x_i,y_i = int(points[i,0]), int(points[i,1])
@@ -78,6 +79,9 @@ class DrivingDataset(Dataset):
                     centred_row = row - y_i
                     future_poses[i, 0, row, col] = exp(-((centred_col ** 2 + centred_row ** 2)) / (2 * sigma ** 2))
 
+            future_poses_regr_offset[i, 0, y_i, x_i] = points[i,0] - x_i
+            future_poses_regr_offset[i, 1, y_i, x_i] = points[i,1] - y_i
+
         if False:
             # fig, (ax1) = plt.subplots(1, 1)
             # for i in range(8):
@@ -88,7 +92,7 @@ class DrivingDataset(Dataset):
             for i in range(8):
                 plt.imshow(np.squeeze(future_poses[i, 0, ...]))
                 plt.show()
-        return future_poses
+        return future_poses, future_poses_regr_offset
 
     def __getitem__(self, idx):
         state = self.event_bag[idx]
@@ -134,7 +138,7 @@ class DrivingDataset(Dataset):
         steering = self.vehicle.turn_angle
         speed = np.array(self.vehicle.speed / Config.normalizing_speed, dtype=np.float32)
 
-        future_penalty_maps = self.future_penalty_map(future_points)
+        future_penalty_maps, future_poses_regr_offset = self.future_penalty_map(future_points)
 
         if False:
             debug_penalty_maps = (np.sum(np.squeeze(future_penalty_maps),axis=0) * 255).astype(np.uint8)
@@ -145,6 +149,7 @@ class DrivingDataset(Dataset):
         sample = {'data': data,
                   'steering': steering,
                   "future_penalty_maps": future_penalty_maps,
+                  "future_poses_regr_offset":future_poses_regr_offset,
                   'speed':speed}
         return sample
 

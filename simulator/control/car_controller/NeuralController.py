@@ -30,6 +30,7 @@ class NeuralController(Controller):
 
     def step(self, path_idx):
 
+        print (self.path.vertices_L.shape[1], path_idx)
         path_idx = self.path.get_point_idx_close_to_car(self.vehicle, path_idx)
         nn_input = self.render_neural_input(path_idx)
 
@@ -45,6 +46,7 @@ class NeuralController(Controller):
         waypoints_3D = np.vstack((waypoints_3D, ones))
 
         self.vehicle.simulate_given_waypoints(waypoints_3D)
+
 
         return waypoints_2D, path_idx
 
