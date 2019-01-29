@@ -221,7 +221,7 @@ class ChauffeurNet(nn.Module):
                 plt.imshow(np.squeeze(waypoints_pred_heatmap[i, 0, ...]))
                 plt.colorbar()
                 plt.show()
-        return indices
+        return indices_hig_res
 
     def steering_weighted_loss(self, target, output):
         """
