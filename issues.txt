@@ -1,1 +1,0 @@
-In world editor, camera cannot rotate more than 90 degrees to the left or right
