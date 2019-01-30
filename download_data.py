@@ -31,9 +31,9 @@ def save_response_content(response, destination):
                 f.write(chunk)
 def check_if_data_exists():
     #https://drive.google.com/open?id=1KUaeIqIQh8ECjNdIFieVa6MW7DYgVrwg
-    required_files = [['1azkG7nXZhsVbBD04ka8D8S-YQyHmT_6W',  'data/world.obj'],
-                      ['1yPmdlxo-Uhc7jrXnOtx-E6_89FFKVofM', 'data/recorded_states.pkl'],
-                      ['1KUaeIqIQh8ECjNdIFieVa6MW7DYgVrwg', 'data/ChauffeurNet.pt']]
+    required_files = [['1yHerqUo9OK-cLjB5lIQ5sb_ZY-j3aC8s',  'data/world.obj'],
+                      ['1pGVNEXhKUkBHpdS2ZpDN-LeSjwLfxXmJ', 'data/recorded_states.pkl'],
+                      ['1Wwpa9vaB3XtSaI9b4CPP06u06Gr7mxzI', 'data/ChauffeurNet.pt']]
     if not os.path.exists("data"):
         os.mkdir("data")
     for pair in required_files:

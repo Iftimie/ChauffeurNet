@@ -18,6 +18,7 @@ Development will be divided in the following steps:
   - [ ] Implement road mask layer
   - [ ] Implement agent box output layer
   - [x] Implement waypoint layer
+  - [x] Implement waypoint offset regression layer
   - [ ] Add other agents to input
   - [ ] Implement perception box output
   
@@ -37,6 +38,15 @@ v 0.1.1
 The net was trained to stop at every intersection. Thus, I added the speed control based on distance from car to waypoint.
 
 ![](assets/v0.1.1.gif)
+
+
+v 0.2
+
+Added traffic-lights to environment. Still need to update rendering properly of the traffic lights. Also, a traffic light is active (coloured, not black) when the car is near the traffic light. 
+Modified the speed control.
+Added offset regression for fine-grained prediction of waypoints.
+
+![](assets/v_0.2.gif)
 
 How to run with pretrained model (will automatically download model from drive):
 
