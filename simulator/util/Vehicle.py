@@ -279,16 +279,26 @@ class Vehicle(Actor):
         #I don't fucking know why it has to be multiplied by 2 but it works
         self.turn_angle = next_turn_angle
 
-    def compute_speed(self, x, z):
+    def compute_speed(self, waypoints_3d):
         x_c, y_c, z_c, roll_c, yaw_c, pitch_c = self.get_transform()
 
-        current = np.array([x_c, 0, z_c])
-        desired = np.array([x, 0, z])
-        difference = desired - current
-        magnitude = np.linalg.norm(difference)
-        interp_obj = interp1d([Config.min_waypoint_distance, Config.max_waypoint_distance], [0, Config.max_speed], fill_value="extrapolate")
+        max_difference_between_waypoints = 2 * Config.num_skip_poses * Config.max_speed
+        # ideally no waypoint should be further away from the previous one more that Config.num_skip_poses * Config.max_speed, but hey, it's not like that. it can be more
+        average_distance = 0
+        counts = 0
+        for i in range(Config.horizon_future-1):
+            waypoint_diff = waypoints_3d[:, i] - waypoints_3d[:, i+1]
+            waypoint_diff_dist = np.linalg.norm(waypoint_diff)
+            if waypoint_diff_dist > max_difference_between_waypoints:
+                continue
+            average_distance += waypoint_diff_dist
+            counts +=1
+        average_distance /= counts
+
+        magnitude = average_distance
+        interp_obj = interp1d([0, Config.num_skip_poses * Config.max_speed], [0, Config.max_speed], fill_value="extrapolate")
         self.speed = min(interp_obj(magnitude), Config.max_speed)
-        if self.speed < 0.1:
+        if self.speed < 1.5:
             self.speed = 0
 
 
@@ -296,8 +306,7 @@ class Vehicle(Actor):
         """
         This method should not modify the speed, it will update the position and the orientation, given the desired location and orientation
         """
-        x,z =waypoints[0][Config.test_waypoint_idx_speed],waypoints[2][Config.test_waypoint_idx_speed]
-        self.compute_speed(x,z)
+        self.compute_speed(waypoints)
         x,z =waypoints[0][Config.test_waypoint_idx_steer],waypoints[2][Config.test_waypoint_idx_steer]
         self.compute_turn_angle(x,z)
         self.update_parameters()
