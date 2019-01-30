@@ -11,7 +11,7 @@ from config import Config
 
 class Simulator(GUI):
 
-    def __init__(self, event_bag_path = "", network_path = "", world_path=""):
+    def __init__(self, event_bag_path = "", network_path = "", world_path="", to_video=False):
         super(Simulator, self).__init__("Simulator", world_path=world_path)
         self.vehicle = Vehicle(self.camera, traffic_lights=self.world.get_traffic_lights(), all_actors=self.world.actors)
         self.world.actors.append(self.vehicle)
@@ -19,6 +19,9 @@ class Simulator(GUI):
         #event_bag represents the data that the user generated. Has values such as the key pressed, and mouse
         self.event_bag = EventBag(event_bag_path, record=False)
         self.path = Path(self.event_bag.list_states,debug=False)
+        self.to_video = to_video
+        if self.to_video:
+            self.video = cv2.VideoWriter('video.avi',cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'),30,(Config.r_res[1],Config.r_res[0]))
 
         self.neural_controller = NeuralController(self.vehicle, self.world, network_path, self.path)
 
@@ -36,9 +39,10 @@ class Simulator(GUI):
     #@Override
     def run(self):
 
+        max_time = self.path.vertices_W.shape[1]
         with torch.no_grad():
             path_idx = 0
-            while path_idx < self.path.vertices_W.shape[1]:
+            while path_idx < self.path.vertices_W.shape[1] and max_time > 0:
                 path_idx+=1
 
                 waypoints_2D, path_idx = self.neural_controller.step(path_idx)
@@ -46,8 +50,13 @@ class Simulator(GUI):
 
                 print(self.vehicle.speed)
 
-                cv2.imshow("Simulator", image_test_nn)
-                cv2.waitKey(1)
+                if self.to_video:
+                    self.video.write(image_test_nn)
+                else:
+                    cv2.imshow("Simulator", image_test_nn)
+                    cv2.waitKey(1)
+
+                max_time -=1
 
     # @Override
     def interpret_key(self):

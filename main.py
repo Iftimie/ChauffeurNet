@@ -15,8 +15,8 @@ def main():
     check_if_data_exists()
 
     record = False
-    do_train = True
-    just_test_network = False
+    do_train = False
+    just_test_network = True
 
     if record:
         recorder = Recorder(event_bag_path="data/recorded_states.pkl", world_path="data/world.obj")
@@ -29,7 +29,8 @@ def main():
 
     if just_test_network:
         simulator = Simulator(event_bag_path="data/recorded_states.pkl", network_path="data/ChauffeurNet.pt" ,
-                              world_path="data/world.obj")
+                              world_path="data/world.obj",
+                              to_video = True)
         simulator.run()
 
 

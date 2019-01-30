@@ -43,8 +43,9 @@ class GUI:
 
     def __init__(self, window_name = "", world_path=""):
 
-        cv2.namedWindow(window_name)
-        cv2.setMouseCallback(window_name, GUI.mouse_listener)
+        if not Config.linux_env:
+            cv2.namedWindow(window_name)
+            cv2.setMouseCallback(window_name, GUI.mouse_listener)
 
         self.world = World(world_path = world_path)
         if os.path.exists(self.world.save_path):
@@ -63,12 +64,15 @@ class GUI:
         self.time_step = 33
 
     def step(self):
-        prev_millis = int(round(time.time() * 1000))
-        key = cv2.waitKey(self.time_step)
-        curr_millis = int(round(time.time() * 1000))
-        if curr_millis - prev_millis < self.time_step:
-            seconds_to_sleep = (self.time_step - (curr_millis - prev_millis)) / 1000
-            time.sleep(seconds_to_sleep)
+        if not Config.linux_env:
+            prev_millis = int(round(time.time() * 1000))
+            key = cv2.waitKey(self.time_step)
+            curr_millis = int(round(time.time() * 1000))
+            if curr_millis - prev_millis < self.time_step:
+                seconds_to_sleep = (self.time_step - (curr_millis - prev_millis)) / 1000
+                time.sleep(seconds_to_sleep)
+        else:
+            key=-1
         return key
 
     def interpretIO_and_render(self):
